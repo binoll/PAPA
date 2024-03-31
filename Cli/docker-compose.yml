@@ -1,0 +1,32 @@
+version: '3'
+services:
+     elasticsearch:
+       image: elasticsearch:7.6.2
+       container_name: elasticsearch
+       volumes:
+           - elastic7-data:/usr/share/elasticsearch/data
+       environment:
+           - discovery.type=single-node
+       networks:
+           elasticsearch-network:
+       ports:
+           - 9200:9200
+       
+     kibana7:
+       image: kibana:7.6.2
+       container_name: kibana
+       environment:
+           - "ELASTICSEARCH_URL=http://elasticsearch:9200"
+       networks:
+           - elasticsearch-network
+       ports:
+           - 5601:5601
+       depends_on:
+           - elasticsearch
+    
+volumes:
+    elastic7-data:
+        driver: local
+networks:
+    elasticsearch-network:
+        driver: bridge
