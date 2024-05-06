@@ -11,7 +11,8 @@ NAME_IN = 'papa'
 TOKENS_JSON = './tokens/tokens_MPI.json'
 HOST = '0.0.0.0'
 PORT = 9200
-es = connections.create_connection(host=HOST, port=PORT)
+es = connections.create_connection(hosts=["http://elastic:password@elasticsearch:9200"])
+
 
 class Article(Document):
     index_name = Keyword()
@@ -33,6 +34,7 @@ class Article(Document):
             "number_of_shards": 4,
             "number_of_replicas": 4,
         }
+
 
 class Start(object):
     @staticmethod
@@ -75,7 +77,7 @@ class Start(object):
         article.index_name = NAME_IN
         article.docname = docname
 
-        result = Search(using=es, index=NAME_IN)\
+        result = Search(using=es, index=NAME_IN) \
             .query("match", docname=docname)
         response = result.execute()
         if response.hits.total.value != 0:
@@ -139,16 +141,16 @@ class Start(object):
         else:
             buf = source.split('_')
             if (len(buf)) == 1:
-                result = Search(using=es, index=NAME_IN)\
+                result = Search(using=es, index=NAME_IN) \
                     .query("match", subject=buf[0])
             elif (len(buf)) == 2:
-                result = Search(using=es, index=NAME_IN)\
-                    .query("match", subject=buf[0])\
+                result = Search(using=es, index=NAME_IN) \
+                    .query("match", subject=buf[0]) \
                     .query("match", work_type=buf[1])
             elif (len(buf)) == 3:
-                result = Search(using=es, index=NAME_IN)\
-                    .query("match", subject=buf[0])\
-                    .query("match", work_type=buf[1])\
+                result = Search(using=es, index=NAME_IN) \
+                    .query("match", subject=buf[0]) \
+                    .query("match", work_type=buf[1]) \
                     .query("match", task_num=buf[2])
                 print(buf)
             else:
@@ -163,7 +165,7 @@ class Start(object):
         if response.hits.total.value == 0:
             print(" ES have no docs to compare!")
             return False
-        else:   
+        else:
             for hit in result.scan():
                 if hit.author == author:
                     continue
@@ -172,53 +174,64 @@ class Start(object):
                 a = fuzz.ratio(tokenstring, hit.tokenstring)
                 old_hash_fingerprints = list(x[0] for x in hit.fingerprints)
                 intersection = list(set(new_hash_fingerprints).intersection(set(old_hash_fingerprints)))
-                token_distance = len(intersection)/min(len(set(old_hash_fingerprints)),len(set(new_hash_fingerprints))) * 100
-                reports.append((a,token_distance,finger.report(fingerprints, hit.fingerprints),hit.docname))
+                token_distance = len(intersection) / min(len(set(old_hash_fingerprints)),
+                                                         len(set(new_hash_fingerprints))) * 100
+                reports.append((a, token_distance, finger.report(fingerprints, hit.fingerprints), hit.docname))
 
-        reports.sort(key = lambda x: x[0], reverse=True)
+        reports.sort(key=lambda x: x[0], reverse=True)
 
         for report in reports[:5]:
             print()
-            print("Сходство ", docname, " с документом ", report[3], " по Левенштейну - ", report[0], "%, по отпечаткам - ", report[1], "%.")
-            finger.print_report(report[2],docname,report[3])
+            print("Сходство ", docname, " с документом ", report[3], " по Левенштейну - ", report[0],
+                  "%, по отпечаткам - ", report[1], "%.")
+            finger.print_report(report[2], docname, report[3])
             print()
             if ((report[0] >= 85) or (report[1] >= 35)):
                 return True
 
         return False
 
+
 elastic = Start()
+
 
 @click.group()
 def main():
-
     @main.command(name='create', help='Create index')
     def help():
         print("Справка")
+
 
 @main.command(name='create', help='Create index')
 def create_click():
     elastic.create()
 
+
 @main.command(name='add', help='Load doc from file. Params: -f [path to file]')
-@click.option('-f', '--filename', type=click.Path(exists=True, file_okay=True, dir_okay=False),required=True,prompt=True,help='Filename/path')
+@click.option('-f', '--filename', type=click.Path(exists=True, file_okay=True, dir_okay=False), required=True,
+              prompt=True, help='Filename/path')
 def add_click(filename):
     elastic.add(filename)
 
+
 @main.command(name='add_dir', help='Load docs from dir. Params: -p [path to dir (without dirs) with files')
-@click.option('-p', '--path', type=click.Path(exists=True, file_okay=False, dir_okay=True),required=True,prompt=True,help='Path to dir')
+@click.option('-p', '--path', type=click.Path(exists=True, file_okay=False, dir_okay=True), required=True, prompt=True,
+              help='Path to dir')
 def add_dir_click(path):
     for filename in os.listdir(path):
-        elastic.add(path+'/'+filename)
+        elastic.add(path + '/' + filename)
 
-@main.command(name='PAPA_dir', help='PAPA-ing docs from dir. Params: -p [path to dir (without dirs) with files to check] -s [source in ES]')
-@click.option('-p', '--path', type=click.Path(exists=True, file_okay=False, dir_okay=True),required=True,prompt=True,help='Path to dir')
+
+@main.command(name='PAPA_dir',
+              help='PAPA-ing docs from dir. Params: -p [path to dir (without dirs) with files to check] -s [source in ES]')
+@click.option('-p', '--path', type=click.Path(exists=True, file_okay=False, dir_okay=True), required=True, prompt=True,
+              help='Path to dir')
 @click.option('-s', '--source', required=True, prompt=True, help='Source')
-def PAPA_dir_click(path,source):
+def PAPA_dir_click(path, source):
     for filename in os.listdir(path):
-        if elastic.PAPA(path+'/'+filename,source) == False:
+        if elastic.PAPA(path + '/' + filename, source) == False:
             print("Случай плагиата не зафиксирован, документ сохранён, см. отчёт в консоли")
-            elastic.add(path+'/'+filename)
+            elastic.add(path + '/' + filename)
         else:
             print("Обнаружен плагиат, см. отчёт в консоли")
             return 1
@@ -226,7 +239,8 @@ def PAPA_dir_click(path,source):
 
 
 @main.command(name='PAPA', help='PAPA. Params: -f [path to file to check] -s [source in ES]')
-@click.option('-f', '--filename', type=click.Path(exists=True, file_okay=True, dir_okay=False),required=True, prompt=True, help='Filename/path')
+@click.option('-f', '--filename', type=click.Path(exists=True, file_okay=True, dir_okay=False), required=True,
+              prompt=True, help='Filename/path')
 @click.option('-s', '--source', required=True, prompt=True, help='Source')
 def PAPA_click(filename, source):
     if elastic.PAPA(filename, source) == False:
@@ -237,5 +251,6 @@ def PAPA_click(filename, source):
         return 1
     return 0
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()
