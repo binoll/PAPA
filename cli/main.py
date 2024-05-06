@@ -1,3 +1,5 @@
+from elasticsearch import Elasticsearch
+
 from detectors import fingerprint as finger
 from tokenizers import tokenizer_MPI as token
 import click
@@ -8,10 +10,12 @@ from elasticsearch_dsl import Document, connections, Search, Text, Keyword
 K = 10
 T = 13
 NAME_IN = 'papa'
-TOKENS_JSON = './tokens/tokens_MPI.json'
+TOKENS_JSON = 'cli/tokens/tokens_MPI.json'
 HOST = '0.0.0.0'
 PORT = 9200
-es = connections.create_connection(hosts=["http://elastic:password@elasticsearch:9200"])
+
+es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
+connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
 
 class Article(Document):

@@ -2,7 +2,7 @@ version: '3'
 
 services:
   elasticsearch:
-    image: elasticsearch:7.6.2
+    image: elasticsearch:8.10.3
     container_name: es717
 
     restart: always
