@@ -74,7 +74,7 @@ def papa():
     filename = secure_filename(file.filename)
     file_content = file.stream.read().decode()
     
-    result = model.PAPA(file_content, filename, src_filename)
+    result = model.papa(file_content, filename, src_filename)
     if 'message' in result:
         return result
     return {

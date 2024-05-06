@@ -3,7 +3,7 @@ import itertools, hashlib
 
 
 def str_to_hash(str):
-    sum = int(hashlib.sha1(''.join([t[0] for t in str]).encode("utf-8")).hexdigest(), 16) % (10 ** 8)
+    sum = int(hashlib.sha1(''.join([t[0] for t in str]).encode('utf-8')).hexdigest(), 16) % (10 ** 8)
     return (sum, str[0][1], str[-1][1])
 
 
