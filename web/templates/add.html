@@ -1,24 +1,24 @@
-{%extends 'global/base.html'%}
+{% extends 'global/base.html' %}
 
-{% block headerName %} PAPA | Добавление файла{% endblock %}
+{% block headerName %} PAPA | Добавление файла {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col"></div>
-        <div class="col-8">
-            <div class="mb-3">
-                <label for="formFile" class="form-label">
-                  Выберите ваш файл
-                  </label>
-                <input class="form-control" type="file" id="formFile" name="file" multiple />
+    <div class="container">
+        <div class="row">
+            <div class="col"></div>
+            <div class="col-8">
+                <div class="mb-3">
+                    <label for="formFile" class="form-label">
+                        Выберите ваш файл
+                    </label>
+                    <input class="form-control" type="file" id="formFile" name="file" multiple/>
+                </div>
             </div>
+            <div class="col"></div>
         </div>
-        <div class="col"></div>
     </div>
-</div>
 {% endblock %}
 
 {% block additional_scripts %}
-<script src="{{url_for('static', filename='js/upload.js')}}"></script>
+    <script src="{{ url_for('static', path='js/upload.js') }}"></script>
 {% endblock %}

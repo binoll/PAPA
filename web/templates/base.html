@@ -8,11 +8,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
   <!-- Bootstrap CSS v5.2.1 -->
-  <link href="{{url_for('static', filename='css/bootstrap.min.css')}}" rel="stylesheet">
-  <link href="{{url_for('static', filename='css/index.css')}}" rel="stylesheet">
-  
-    <link href="{{url_for('static', filename='css/toastr.min.css')}}" rel="stylesheet"/>
-    <link rel="icon" type="image/png" sizes="76x76" href="{{url_for('static', filename='img/father.png')}}" />
+  <link href="{{ url_for('static', path='css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='css/index.css') }}" rel="stylesheet">
+
+  <link href="{{ url_for('static', path='css/toastr.min.css') }}" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="76x76" href="{{ url_for('static', path='img/father.png') }}" />
 
 </head>
 
@@ -29,15 +29,11 @@
     {% endblock %}
   </footer>
   <!-- Bootstrap JavaScript Libraries -->
-  <script src="{{url_for('static', filename='js/jquery-3.6.4.min.js')}}"></script>
+  <script src="{{ url_for('static', path='js/jquery-3.6.4.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/popper.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/bootstrap.min.js') }}"></script>
 
-  <script src="{{url_for('static', filename='js/popper.min.js')}}">
-    </script>
-
-  <script src="{{url_for('static', filename='js/bootstrap.min.js')}}">
-    </script>
-  
-    <script src="{{url_for('static', filename='js/toastr.min.js')}}"></script>
+  <script src="{{ url_for('static', path='js/toastr.min.js') }}"></script>
   {% block additional_scripts %}
   {% endblock %}
 </body>
