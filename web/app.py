@@ -16,8 +16,8 @@ from fastapi.templating import Jinja2Templates
 from werkzeug.utils import secure_filename
 
 app = FastAPI()
-templates = Jinja2Templates(directory='web/templates')
-app.mount('/web', StaticFiles(directory='web/templates'))
+templates = Jinja2Templates(directory='web/static/html')
+app.mount('/web/static', StaticFiles(directory='web/static'), name='static')
 
 HOST = '0.0.0.0'
 PORT = 9200
@@ -29,7 +29,8 @@ if os.path.exists(dotenv_path):
 es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
-with open(os.environ.get('TOKENS_JSON'), 'r', encoding='utf8') as tf:
+tokens_json_path = os.path.join(os.path.dirname(__file__), 'data', 'tokens', 'mpi.json')
+with open(tokens_json_path, 'r', encoding='utf8') as tf:
     model = PAPA(es, tokenizer, tf.read())
 
 
