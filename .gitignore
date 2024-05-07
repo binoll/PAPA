@@ -1,2 +1,9 @@
 .idea
 venv
+cli/detectors/__pycache__
+cli/tokenizers/__pycache__
+cli/__pycache__
+web/__pycache__
+web/controllers/tokenizers/__pycache__
+web/controllers/detectors/__pycache__
+web/models/__pycache__

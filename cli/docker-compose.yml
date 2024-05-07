@@ -1,19 +1,21 @@
-version: '3'
+version: '3.7'
 services:
      elasticsearch:
-       image: elasticsearch:8.10.3
+       image: elasticsearch:8.12.0
        container_name: elasticsearch
        volumes:
            - elastic7-data:/usr/share/elasticsearch/data
        environment:
            - discovery.type=single-node
+           - xpack.security.http.ssl.enabled=false
+           - ELASTIC_PASSWORD=password
        networks:
            elasticsearch-network:
        ports:
            - 9200:9200
-       
+
      kibana7:
-       image: kibana:7.6.2
+       image: kibana:8.12.0
        container_name: kibana
        environment:
            - "ELASTICSEARCH_URL=http://elasticsearch:9200"
@@ -23,7 +25,7 @@ services:
            - 5601:5601
        depends_on:
            - elasticsearch
-    
+
 volumes:
     elastic7-data:
         driver: local
