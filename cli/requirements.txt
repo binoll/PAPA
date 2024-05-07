@@ -1,5 +1,0 @@
-elasticsearch-dsl
-fire
-fuzzywuzzy
-Levenshtein
-nltk

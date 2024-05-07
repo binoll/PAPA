@@ -6,8 +6,8 @@ from fastapi import FastAPI, File, UploadFile, Form
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from dotenv import load_dotenv
-from web.models.PAPA import PAPA
-from web.controllers.tokenizers.mpi import tokenizer
+from src.models import PAPA
+from src.tokenizers import mpi
 
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,22 +16,18 @@ from fastapi.templating import Jinja2Templates
 from werkzeug.utils import secure_filename
 
 app = FastAPI()
-templates = Jinja2Templates(directory='web/static/html')
-app.mount('/web/static', StaticFiles(directory='web/static'), name='static')
+templates = Jinja2Templates(directory='web/html')
+app.mount('/web', StaticFiles(directory='web'), name='web')
 
 HOST = '0.0.0.0'
 PORT = 9200
-
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
+tokens_json_path = 'src/tokens/mpi.json'
 
 es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
-tokens_json_path = os.path.join(os.path.dirname(__file__), 'data', 'tokens', 'mpi.json')
 with open(tokens_json_path, 'r', encoding='utf8') as tf:
-    model = PAPA(es, tokenizer, tf.read())
+    model = PAPA.PAPA(es, mpi.tokenizer, tf.read())
 
 
 @app.get('/')

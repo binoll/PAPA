@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <title>{% block headerName %} {% endblock %}</title>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Bootstrap CSS v5.2.1 -->
+  <link href="{{ url_for('web', path='css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('web', path='css/index.css') }}" rel="stylesheet">
+
+  <link href="{{ url_for('web', path='css/toastr.min.css') }}" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="76x76" href="{{ url_for('web', path='img/father.png') }}" />
+
+</head>
+
+<body>
+  <header>
+    {% include 'topbar.html' %}
+  </header>
+  <main>
+    {% block content %}
+    {% endblock %}
+  </main>
+  <footer>
+    {% block footer %}
+    {% endblock %}
+  </footer>
+  <!-- Bootstrap JavaScript Libraries -->
+  <script src="{{ url_for('web', path='js/jquery-3.6.4.min.js') }}"></script>
+  <script src="{{ url_for('web', path='js/popper.min.js') }}"></script>
+  <script src="{{ url_for('web', path='js/bootstrap.min.js') }}"></script>
+
+  <script src="{{ url_for('web', path='js/toastr.min.js') }}"></script>
+  {% block additional_scripts %}
+  {% endblock %}
+</body>
+
+</html>

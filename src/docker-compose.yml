@@ -27,7 +27,7 @@ services:
       - elasticsearch
 
   papa:
-    image: papa:web
+    image: papa:src
     container_name: papa_web
     restart: always
     links:

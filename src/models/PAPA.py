@@ -1,6 +1,6 @@
 import os
 from fuzzywuzzy import fuzz
-from cli.detectors import fingerprint
+from src.detectors import fingerprint
 from elasticsearch_dsl import Search, Document, Text, Keyword
 
 
