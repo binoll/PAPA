@@ -4,47 +4,38 @@ services:
   elasticsearch:
     image: elasticsearch:8.10.3
     container_name: es717
-
     restart: always
-
     volumes:
       - elastic7-data:/usr/share/elasticsearch/data
-
     environment:
       - "discovery.type=single-node"
-
     ports:
       - "9200:9200"
-
     networks:
       - es_net
 
   kibana7:
-       image: kibana:7.6.2
-       container_name: kibana
-       environment:
-           - "ELASTICSEARCH_URL=http://elasticsearch:9200"
-       networks:
-           - es_net
-       ports:
-           - 5601:5601
-       depends_on:
-           - elasticsearch
+    image: kibana:8.12.0
+    container_name: kibana
+    environment:
+      - "ELASTICSEARCH_URL=http://elasticsearch:9200"
+    networks:
+      - es_net
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
 
   papa:
     image: papa:web
     container_name: papa_web
     restart: always
-
     links:
       - elasticsearch
-
     depends_on:
       - kibana7
-
     ports:
       - "732:732"
-      
     environment:
       - "HOST=elasticsearch"
       - "PORT=9200"
@@ -52,14 +43,12 @@ services:
       - "K=10"
       - "T=13"
       - "PORT_WEB=732"
-
     networks:
       - es_net
 
 volumes:
-    elastic7-data:
-        driver: local
-
+  elastic7-data:
+    driver: local
 
 networks:
   es_net:

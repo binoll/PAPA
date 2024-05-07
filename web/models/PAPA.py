@@ -31,7 +31,6 @@ class Article(Document):
 
 
 class PAPA:
-
     def __init__(self, es, tokenzier_function, token_file_content):
         self.es = es
         self.tokenizer = tokenzier_function
@@ -85,7 +84,7 @@ class PAPA:
 
         self.es.indices.refresh()
 
-    def PAPA(self, file_content, file_name, source):
+    def papa(self, file_content, file_name, source):
         """
             Проверка кода с базой
         """
