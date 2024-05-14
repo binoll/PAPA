@@ -4,7 +4,7 @@ click
 colorama
 elasticsearch
 elasticsearch-dsl
-FastAPI
+fastapi
 uvicorn
 fuzzywuzzy
 itsdangerous
