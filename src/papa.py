@@ -3,15 +3,17 @@ from fuzzywuzzy import fuzz
 from src import fingerprint
 from elasticsearch_dsl import Search, Document, Text, Keyword
 
+NAME_IN = 'papa'
+
 
 class Article(Document):
     index_name = Keyword()
 
     docname = Keyword()
     author = Keyword()
-    subject = Keyword()  # 1
-    work_type = Keyword()  # 2
-    task_num = Keyword()  # 3
+    subject = Keyword()
+    work_type = Keyword()
+    task_num = Keyword()
 
     text = Text()
     tokens = Text()
@@ -31,17 +33,24 @@ class Article(Document):
 
 
 class PAPA:
-    def __init__(self, es, tokenzier_function, token_file_content):
+    def __init__(self, es, tokenizer_function, token_file_content):
         self.es = es
-        self.tokenizer = tokenzier_function
+        self.tokenizer = tokenizer_function
         self.tokens_file_content = token_file_content
 
     def create(self):
         """
-            Создание пустого индекса с именем os.environ.get("NAME_IN")
+        Создание пустого индекса с именем os.environ.get("NAME_IN")
+
+        Returns:
+            None
         """
-        if self.es.indices.exists(index=os.environ.get('NAME_IN')):
-            self.es.indices.delete(index=os.environ.get('NAME_IN'))
+        index_name = os.environ.get('NAME_IN')
+        if not index_name:
+            raise ValueError('Переменная окружения NAME_IN не установлена.')
+
+        if self.es.indices.exists(index=index_name):
+            self.es.indices.delete(index=index_name)
 
         Article.init()
         new_index = Article()
@@ -49,10 +58,16 @@ class PAPA:
 
     def add(self, filename, file_content):
         """
-            Добавление в базу
-        """
+        Добавление в базу
 
-        text = file_content if type(file_content) == list else file_content.split('\n')
+        Args:
+            filename (str): Имя файла.
+            file_content (Union[str, List[str]]): Содержимое файла.
+
+        Returns:
+            None
+        """
+        text = file_content if isinstance(file_content, list) else file_content.split('\n')
 
         tokens = self.tokenizer(text, self.tokens_file_content)
         tokenstring = ''.join([x[0] for x in tokens])
@@ -85,6 +100,18 @@ class PAPA:
         self.es.indices.refresh()
 
     def papa(self, file_content, file_name, source):
+        """
+        Проверка кода с базой
+
+        Args:
+            file_content (str): Содержимое файла для проверки.
+            file_name (str): Имя файла для проверки.
+            source (str): Источник для проверки.
+
+        Returns:
+            dict: Содержит результаты сравнения.
+        """
+
         tokens = self.tokenizer(file_content, self.tokens_file_content)
         tokenstring = ''.join([x[0] for x in tokens])
         fingerprints = fingerprint.fingerprints(tokens, int(os.environ.get('K')), int(os.environ.get('T')))
@@ -96,69 +123,47 @@ class PAPA:
             return {'message': 'File name error'}
 
         author = buf[0]
-        subject = buf[1]
-        work_type = buf[2]
-        task_num = buf[3].split('.')[0]
 
-        article = Article()
-        article.index_name = os.environ.get('NAME_IN')
-        article.docname = docname
-        article.author = author
-        article.subject = subject
-        article.work_type = work_type
-        article.task_num = task_num
-        article.text = file_content
-        article.tokens = tokens
-        article.tokenstring = tokenstring
-        article.fingerprints = fingerprints
-
-        new_hash_fingerprints = list(x[0] for x in fingerprints)
+        new_hash_fingerprints = [x[0] for x in fingerprints]
 
         if source.lower() == 'all':
             result = Search(using=self.es, index=os.environ.get('NAME_IN')) \
                 .query('match', index_name=os.environ.get('NAME_IN'))
         else:
             buf = source.split('_')
-            if (len(buf)) == 1:
+            if len(buf) == 1:
                 result = Search(using=self.es, index=os.environ.get('NAME_IN')) \
                     .query('match', subject=buf[0])
-            elif (len(buf)) == 2:
+            elif len(buf) == 2:
                 result = Search(using=self.es, index=os.environ.get('NAME_IN')) \
                     .query('match', subject=buf[0]) \
                     .query('match', work_type=buf[1])
-            elif (len(buf)) == 3:
+            elif len(buf) == 3:
                 result = Search(using=self.es, index=os.environ.get('NAME_IN')) \
                     .query('match', subject=buf[0]) \
                     .query('match', work_type=buf[1]) \
                     .query('match', task_num=buf[2])
-
             else:
                 return {'message': 'Incorrect source!'}
 
         self.es.indices.refresh(index=os.environ.get('NAME_IN'))
 
         response = result.execute()
-        reports = list()
+        reports = []
 
         if response.hits.total.value == 0:
             return {'message': 'ES have no docs to compare!'}
 
-        else:
-            for hit in result.scan():
-                if hit.author == author:
-                    continue
-                if hit.docname == docname:
-                    continue
-                a = fuzz.ratio(tokenstring, hit.tokenstring)
-                old_hash_fingerprints = list(x[0] for x in hit.fingerprints)
-                intersection = list(set(new_hash_fingerprints).intersection(
-                    set(old_hash_fingerprints)))
-                token_distance = len(
-                    intersection) / max(len(set(old_hash_fingerprints)), len(set(new_hash_fingerprints))) * 100
-                reports.append((a, token_distance, fingerprint.report(
-                    fingerprints, hit.fingerprints), hit.docname, list(hit.text)))
-
-                print(hit)
+        for hit in result.scan():
+            if hit.author == author or hit.docname == docname:
+                continue
+            a = fuzz.ratio(tokenstring, hit.tokenstring)
+            old_hash_fingerprints = [x[0] for x in hit.fingerprints]
+            intersection = list(set(new_hash_fingerprints).intersection(set(old_hash_fingerprints)))
+            token_distance = len(intersection) / max(len(set(old_hash_fingerprints)),
+                                                     len(set(new_hash_fingerprints))) * 100
+            reports.append(
+                (a, token_distance, fingerprint.report(fingerprints, hit.fingerprints), hit.docname, list(hit.text)))
 
         reports.sort(key=lambda x: x[0], reverse=True)
 
@@ -167,15 +172,11 @@ class PAPA:
         similars_proc = []
 
         for report in reports[:5]:
-            print()
-            print('Сходство ', docname, ' с документом ',
-                  report[3], ' по Левенштейну - ', report[0], '%, по отпечаткам - ', report[1], '%.')
-            print(report[2])
             tr = fingerprint.print_report(report[2], docname, report[3])
-            if tr != None:
+            if tr:
                 results.append(tr)
                 dst_names.append(report[3])
-                similars_proc.append(str(report[0]) + '%/' + str(report[1]))
+                similars_proc.append(f"{report[0]}%/{report[1]}%")
 
         return {
             'diff': results,
@@ -185,11 +186,17 @@ class PAPA:
         }
 
     def get_field_values(self, field):
+        """
+        Получение значений поля
+
+        Args:
+            field (str): Поле, значения которого нужно получить.
+
+        Returns:
+            list: Список значений поля.
+        """
         data = self.es.sql.query(
-            body={
-                'query': f'SELECT {field} FROM papa'
-            }
+            body={'query': f'SELECT {field} FROM papa'}
         )
-        result = list({v[0] for v in data['rows'] if v[0]})
-        result.sort()
+        result = sorted({v[0] for v in data['rows'] if v[0]})
         return result
