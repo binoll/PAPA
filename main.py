@@ -10,7 +10,6 @@ from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from src import mpi, papa
 
-NAME_IN = 'papa'
 HOST = '0.0.0.0'
 PORT = 9200
 tokens_json_path = 'src/tokens/mpi.json'

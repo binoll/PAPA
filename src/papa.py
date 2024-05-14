@@ -4,7 +4,8 @@ from elasticsearch import Elasticsearch
 from fuzzywuzzy import fuzz
 from src import fingerprint
 from elasticsearch_dsl import Search, Document, Text, Keyword, function
-from main import NAME_IN
+
+NAME_IN = 'papa'
 
 
 class Article(Document):
@@ -104,7 +105,7 @@ class PAPA:
         )
 
         article = Article(
-            index_name=os.environ.get('NAME_IN'),
+            index_name=os.environ.get(NAME_IN),
             docname=docname,
             author=author,
             subject=subject,
@@ -136,7 +137,7 @@ class PAPA:
 
         new_hash_fingerprints = [x[0] for x in fingerprints]
 
-        index_name = os.environ.get('NAME_IN')
+        index_name = os.environ.get(NAME_IN)
         if not index_name:
             raise ValueError('Переменная окружения NAME_IN не установлена.')
 
