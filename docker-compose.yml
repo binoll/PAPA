@@ -18,7 +18,7 @@ services:
     image: kibana:8.12.0
     container_name: kibana
     environment:
-      - "ELASTICSEARCH_URL=http://elasticsearch:9200"
+      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
     networks:
       - es_net
     ports:
@@ -27,7 +27,9 @@ services:
       - elasticsearch
 
   papa:
-    image: papa:src
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: papa_web
     restart: always
     links:
@@ -35,14 +37,14 @@ services:
     depends_on:
       - kibana7
     ports:
-      - "732:732"
+      - "732:8000"
     environment:
       - "HOST=elasticsearch"
       - "PORT=9200"
       - "NAME_IN=papa"
       - "K=10"
       - "T=13"
-      - "PORT_WEB=732"
+      - "PORT_WEB=8000"
     networks:
       - es_net
 
