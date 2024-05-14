@@ -85,10 +85,6 @@ class PAPA:
         self.es.indices.refresh()
 
     def papa(self, file_content, file_name, source):
-        """
-            Проверка кода с базой
-        """
-
         tokens = self.tokenizer(file_content, self.tokens_file_content)
         tokenstring = ''.join([x[0] for x in tokens])
         fingerprints = fingerprint.fingerprints(tokens, int(os.environ.get('K')), int(os.environ.get('T')))
