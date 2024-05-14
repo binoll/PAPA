@@ -8,8 +8,7 @@ from fastapi.templating import Jinja2Templates
 from werkzeug.utils import secure_filename
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
-from src.models import PAPA
-from src.tokenizers import mpi
+from src import mpi, papa
 
 HOST = '0.0.0.0'
 PORT = 9200
@@ -19,7 +18,7 @@ es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
 with open(tokens_json_path, 'r', encoding='utf8') as tf:
-    model = PAPA.PAPA(es, mpi.tokenizer, tf.read())
+    model = papa.PAPA(es, mpi.tokenizer, tf.read())
 
 app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
