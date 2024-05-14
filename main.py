@@ -10,6 +10,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from src import mpi, papa
 
+NAME_IN = 'papa'
 HOST = '0.0.0.0'
 PORT = 9200
 tokens_json_path = 'src/tokens/mpi.json'
@@ -17,28 +18,31 @@ tokens_json_path = 'src/tokens/mpi.json'
 es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
-with open(tokens_json_path, 'r', encoding='utf8') as tf:
-    model = papa.PAPA(es, mpi.tokenizer, tf.read())
-
 app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
 
+with open(tokens_json_path, 'r', encoding='utf8') as tokens:
+    model = papa.PAPA(es, mpi.tokenizer, tokens.read())
+
 
 @app.get('/')
-async def main_page(request: Request):
+async def home(request: Request) -> templates.TemplateResponse:
     try:
         subjects = model.get_field_values('subject')
         work_types = model.get_field_values('work_type')
         task_nums = model.get_field_values('task_num')
-        return templates.TemplateResponse('index.html',
-                                          {'request': request, 'subjects': subjects, 'work_types': work_types,
-                                           'task_nums': task_nums})
+        return templates.TemplateResponse(
+            'index.html', {
+                'request': request, 'subjects': subjects,
+                'work_types': work_types, 'task_nums': task_nums
+            }
+        )
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
 
 
-@app.post('/api/create')
+@app.post('/create')
 async def create_index():
     try:
         model.create()
@@ -47,7 +51,7 @@ async def create_index():
         return JSONResponse(status_code=400, content={'message': f'Error creating index: {str(e)}'})
 
 
-@app.post('/api/add_file')
+@app.post('/add_file')
 async def add_document(file: UploadFile = File(...)):
     try:
         if not file:
@@ -64,7 +68,7 @@ async def add_document(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={'message': str(e)})
 
 
-@app.post('/api/papa')
+@app.post('/papa')
 async def papa(file: UploadFile = File(...), src_filename: str = Form(...)):
     try:
         if not file:
@@ -90,7 +94,7 @@ async def papa(file: UploadFile = File(...), src_filename: str = Form(...)):
         return JSONResponse(status_code=500, content={'message': str(e)})
 
 
-@app.post('/api/field/')
+@app.post('/field/')
 async def field_list(name: str = Form(...)):
     try:
         data = model.get_field_values(name)
