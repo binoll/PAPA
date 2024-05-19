@@ -51,17 +51,25 @@
             </div>
         </div>
         <div class="accordion-item">
-            <h2 class="accordion-header" id="headingTwo">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+            <h2 class="accordion-header" id="headingThree">
+                <button
+                        class="accordion-button collapsed"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapseThree"
+                        aria-expanded="false"
+                        aria-controls="collapseThree">
                     Результат
                 </button>
             </h2>
-            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo"
-                 data-bs-parent="#fileComparisonAccordion">
+            <div
+                    id="collapseThree"
+                    class="accordion-collapse collapse"
+                    aria-labelledby="headingThree"
+                    data-bs-parent="#accordionExample">
                 <div class="accordion-body">
                     <div id="results">
-                        <strong>Пока пусто...</strong>
+                        <strong>{{ result }}</strong>
                     </div>
                 </div>
             </div>

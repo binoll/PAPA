@@ -1,14 +1,17 @@
 import os
 import uvicorn
 
-from fastapi import FastAPI, Request, File, UploadFile, Form
+from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette import status
+from starlette.responses import RedirectResponse
 from werkzeug.utils import secure_filename
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from src import mpi, papa
+from loguru import logger
 
 HOST = '0.0.0.0'
 PORT = 9200
@@ -17,37 +20,33 @@ tokens_json_path = 'src/tokens/mpi.json'
 es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
+logger = logger.opt(colors=True)
+
 app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
 
 with open(tokens_json_path, 'r', encoding='utf8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
+    model.create()
 
 
 @app.get('/')
-async def home(request: Request) -> templates.TemplateResponse:
+async def home(request: Request, result: str = 'Пока пусто...') -> templates.TemplateResponse:
     try:
         subjects = model.get_field_values('subject')
         work_types = model.get_field_values('work_type')
         task_nums = model.get_field_values('task_num')
+
         return templates.TemplateResponse(
             'index.html', {
                 'request': request, 'subjects': subjects,
-                'work_types': work_types, 'task_nums': task_nums
+                'work_types': work_types, 'task_nums': task_nums,
+                'result': result
             }
         )
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
-
-
-@app.post('/create')
-async def create_index():
-    try:
-        model.create()
-        return JSONResponse(content={'code': 201, 'message': 'Successfully created!'})
-    except Exception as e:
-        return JSONResponse(status_code=400, content={'message': f'Error creating index: {str(e)}'})
 
 
 @app.post('/add_file')
@@ -61,34 +60,36 @@ async def add_document(file: UploadFile = File(...)):
 
         filename = secure_filename(file.filename)
         file_content = await file.read()
-        model.add(filename, file_content)
-        return JSONResponse(content={'code': 200, 'message': 'File Loaded!'})
+        model.add(filename, file_content.decode('utf-8'))
+
+        return JSONResponse(content={'code': 200, 'message': 'Файл загружен!'})
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
 
 
 @app.post('/papa')
-async def papa(file: UploadFile = File(...), src_filename: str = Form(...)):
+async def papa(request: Request, file: UploadFile = File(...), subject: str = Form(...), work_type: str = Form(...),
+               task_num: str = Form(...)):
+    result = str()
+
     try:
         if not file:
-            return JSONResponse(status_code=400, content={'message': 'File not loaded!'})
-
+            return JSONResponse(status_code=400, content={'code': 400, 'message': 'File not loaded!'})
         if file.filename == '':
-            return JSONResponse(status_code=400, content={'message': 'File empty!'})
+            return JSONResponse(status_code=400, content={'code': 400, 'message': 'File empty!'})
 
         file_content = await file.read()
-        result = model.papa(file_content, file.filename, src_filename)
+        filename = secure_filename(file.filename)
+        src_filenames = model.get_src(subject, work_type, task_num)
 
-        if 'message' in result:
-            return JSONResponse(content=result)
+        if not src_filenames:
+            src_filename = 'all'
+            print(model.papa(file_content.decode('utf-8'), filename, src_filename))
+        else:
+            for src_filename in src_filenames:
+                print(model.papa(file_content.decode('utf-8'), filename, src_filename))
 
-        return JSONResponse(content={
-            'src_code': file_content.decode().split('\n'),
-            'dst_code': list(result['dst_code']),
-            'diff': result['diff'],
-            'dst_name': result['dst_name'],
-            'sims': result['sims']
-        })
+        return templates.TemplateResponse('/', {'request': request, 'result': result})
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
 

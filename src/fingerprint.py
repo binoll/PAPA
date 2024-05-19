@@ -1,49 +1,18 @@
 from nltk import ngrams
-import itertools
-import hashlib
+import itertools, hashlib
 
 
-def str_to_hash(s: str) -> int:
-    """
-    Функция преобразует строку в хэш-код.
-
-    Args:
-        s (str): Входная строка.
-
-    Returns:
-        int: Хэш-код строки.
-    """
-    sum = int(hashlib.sha1(s.encode("utf-8")).hexdigest(), 16) % (10 ** 8)
-    return sum
+def str_to_hash(str):
+    sum = int(hashlib.sha1(''.join([t[0] for t in str]).encode("utf-8")).hexdigest(), 16) % (10 ** 8)
+    return (sum, str[0][1], str[-1][1])
 
 
-def right_index(el, s):
-    """
-    Функция возвращает последний индекс элемента el в строке s.
-
-    Args:
-        el: Элемент, индекс которого нужно найти.
-        s: Строка, в которой ищется элемент.
-
-    Returns:
-        int: Индекс элемента в строке.
-    """
-    x = [i for i, ltr in enumerate(s) if ltr[0] == el[0]]
+def right_index(el, str):
+    x = [i for i, ltr in enumerate(str) if ltr[0] == el[0]]
     return x[-1]
 
 
 def fingerprints(data, k, t):
-    """
-    Функция формирует отпечатки (fingerprints) из данных.
-
-    Args:
-        data: Входные данные.
-        k (int): Длина k-грамм.
-        t (int): Параметр t.
-
-    Returns:
-        list: Список отпечатков.
-    """
     kgrams = list(ngrams(data, k))
 
     hashes = list()
@@ -81,16 +50,6 @@ def fingerprints(data, k, t):
 
 
 def report(data1, data2):
-    """
-    Функция формирует отчет о сходстве между двумя наборами данных.
-
-    Args:
-        data1: Первый набор данных.
-        data2: Второй набор данных.
-
-    Returns:
-        list: Отчет о сходстве.
-    """
     result = []
     for x in data1:
         finder = list(filter(
@@ -114,17 +73,6 @@ def report(data1, data2):
 
 
 def print_report(report, doc1, doc2):
-    """
-    Функция выводит отчет о сходстве между двумя документами.
-
-    Args:
-        report: Отчет о сходстве.
-        doc1: Имя первого документа.
-        doc2: Имя второго документа.
-
-    Returns:
-        list: Отчет о сходстве.
-    """
     buf = list()
     if len(report) == 0:
         return
@@ -168,11 +116,11 @@ def print_report(report, doc1, doc2):
         similar_list = []
         for p in itertools.permutations(b[1]):
             if len(p) > 1 and (set(p[0]) & set(p[1])):
-                sim_data = list(set(p[0]).union(set(p[1])))
-                sim_data.sort()
+                simData = list(set(p[0]).union(set(p[1])))
+                simData.sort()
 
-                if sim_data not in similar_list:
-                    similar_list.append(sim_data)
+                if simData not in similar_list:
+                    similar_list.append(simData)
             else:
                 if p[0] not in similar_list:
                     similar_list.append(p[0])
@@ -185,7 +133,7 @@ def print_report(report, doc1, doc2):
         ]
         bulka = False
         for k in result:
-            if set(k[0]) & set(source):
+            if (set(k[0]) & set(source)):
                 k[0] = list(set(k[0]).union(set(source)))
                 k[1] += similar_list
                 bulka = True
