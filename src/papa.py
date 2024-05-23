@@ -1,3 +1,4 @@
+import os
 from fuzzywuzzy import fuzz
 from src import fingerprint
 from elasticsearch_dsl import Search, Document, Text, Keyword
@@ -31,32 +32,29 @@ class Article(Document):
 
 
 class PAPA:
-    def __init__(self, es, tokenzier_function, token_file_content):
+    def __init__(self, es, token_function, token_file_content):
         self.es = es
-        self.tokenizer = tokenzier_function
+        self.tokenizer = token_function
         self.tokensFileContent = token_file_content
 
-    def create(self):
-        """
-            Создание пустого индекса с именем 'NAME_IN'
-        """
-        if not self.es.indices.exists(index=NAME_IN):
+    def create_index(self):
+        if self.es.indices.exists(index=NAME_IN):
             return
 
         Article.init()
         new_index = Article()
         new_index.save()
 
-    def add(self, filename, file_content):
-        """
-            Добавление в базу
-        """
+    def clean_index(self):
+        if self.es.indices.exists(index=NAME_IN):
+            self.es.indices.delete(index=NAME_IN)
 
+    def add(self, filename, file_content):
         text = file_content if type(file_content) == list else file_content.split('\n')
 
         tokens = self.tokenizer(text, self.tokensFileContent)
         tokenstring = ''.join([x[0] for x in tokens])
-        fingerprints = fingerprint.fingerprints(tokens, int(K), int(T))
+        fingerprints = fingerprint.fingerprints(tokens, int(os.environ.get('K')), int(os.environ.get('T')))
 
         buf = filename.split('/')
         docname = buf[-1]
@@ -85,13 +83,9 @@ class PAPA:
         self.es.indices.refresh()
 
     def papa(self, file_content, file_name, source):
-        """
-            Проверка кода с базой
-        """
-
         tokens = self.tokenizer(file_content, self.tokensFileContent)
         tokenstring = ''.join([x[0] for x in tokens])
-        fingerprints = fingerprint.fingerprints(tokens, int(K), int(T))
+        fingerprints = fingerprint.fingerprints(tokens, int(os.environ.get('K')), int(os.environ.get('T')))
 
         buf = file_name.split('/')
         docname = buf[-1]
@@ -136,6 +130,7 @@ class PAPA:
                     .query('match', subject=buf[0]) \
                     .query('match', work_type=buf[1]) \
                     .query('match', task_num=buf[2])
+
             else:
                 return {'message': 'Incorrect source!'}
 
@@ -171,40 +166,29 @@ class PAPA:
         similars_proc = []
 
         for report in reports[:5]:
+            print()
+            print('Сходство ', docname, ' с документом ',
+                  report[3], ' по Левенштейну - ', report[0], '%, по отпечаткам - ', report[1], '%.')
+            print(report[2])
             tr = fingerprint.print_report(report[2], docname, report[3])
             if tr != None:
                 results.append(tr)
                 dst_names.append(report[3])
                 similars_proc.append(str(report[0]) + '%/' + str(report[1]))
 
-        return result
+        return {
+            'diff': results,
+            'dst_code': [r[-1] for r in reports[:5]],
+            'dst_name': dst_names,
+            'sims': similars_proc
+        }
 
     def get_field_values(self, field):
         data = self.es.sql.query(
             body={
-                'query': f'SELECT {field} FROM papa'
+                'query': f'SELECT {field} FROM {NAME_IN}'
             }
         )
         result = list({v[0] for v in data['rows'] if v[0]})
         result.sort()
         return result
-
-    def get_src(self, subjects, work_types, task_nums):
-        s = Search(index=NAME_IN)
-
-        filters = []
-        if subjects:
-            filters.append({"term": {"subject": subjects}})
-        if work_types:
-            filters.append({"term": {"work_type": work_types}})
-        if task_nums:
-            filters.append({"term": {"task_num": task_nums}})
-
-        if filters:
-            s = s.query("bool", filter=filters)
-
-        response = s.execute()
-
-        docnames = [hit.docname for hit in response]
-
-        return docnames

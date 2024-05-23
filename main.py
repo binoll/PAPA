@@ -28,7 +28,7 @@ app.mount('/web', StaticFiles(directory='web'), name='web')
 
 with open(tokens_json_path, 'r', encoding='utf8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
-    model.create()
+    model.create_index()
 
 
 @app.get('/')
@@ -53,16 +53,16 @@ async def home(request: Request, result: str = 'Пока пусто...') -> temp
 async def add_document(file: UploadFile = File(...)):
     try:
         if not file:
-            return JSONResponse(status_code=400, content={'message': 'File not loaded!'})
+            return JSONResponse(status_code=400, content={'message': 'File \"{filename}\" not loaded!'})
 
         if file.filename == '':
-            return JSONResponse(status_code=400, content={'message': 'File empty!'})
+            return JSONResponse(status_code=400, content={'message': 'File \"{filename}\" empty!'})
 
         filename = secure_filename(file.filename)
         file_content = await file.read()
         model.add(filename, file_content.decode('utf-8'))
 
-        return JSONResponse(content={'code': 200, 'message': 'Файл загружен!'})
+        return JSONResponse(status_code=200, content={'message': f'Файл \"{filename}\" загружен!'})
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
 
@@ -87,6 +87,7 @@ async def papa(request: Request, file: UploadFile = File(...), subject: str = Fo
             print(model.papa(file_content.decode('utf-8'), filename, src_filename))
         else:
             for src_filename in src_filenames:
+                print(src_filename)
                 print(model.papa(file_content.decode('utf-8'), filename, src_filename))
 
         return templates.TemplateResponse('/', {'request': request, 'result': result})

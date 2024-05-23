@@ -21,13 +21,13 @@ def fingerprints(data, k, t):
         hashes.append(str_to_hash(gram))
 
     w = t - k + 1
-    t_hgrams = list(ngrams(hashes, w))
+    tHgrams = list(ngrams(hashes, w))
 
     fngrprnts = list()
     m = (0, 0, 0)
     lpos = 0
 
-    for gram in t_hgrams:
+    for gram in tHgrams:
         if m == min(gram):
             if (gram.count(m) >= 1) and (right_index(m, gram) > lpos):
                 lpos = right_index(m, gram)
@@ -102,6 +102,7 @@ def print_report(report, doc1, doc2):
     buf.append(list((bufl, bufr)))
 
     for item in buf:
+        # item[1].sort(key=lambda x: x[0])
         print('Строки документа', doc1, ' с номерами ', item[0][0], ' - ', item[0][1], ' похожи на строки ', item[1],
               ' документа ', doc2)
 
@@ -113,32 +114,32 @@ def print_report(report, doc1, doc2):
             for x in b[1]
         ]
 
-        similar_list = []
+        similarList = []
         for p in itertools.permutations(b[1]):
-            if len(p) > 1 and (set(p[0]) & set(p[1])):
+            if (len(p) > 1 and (set(p[0]) & set(p[1]))):
                 simData = list(set(p[0]).union(set(p[1])))
                 simData.sort()
 
-                if simData not in similar_list:
-                    similar_list.append(simData)
+                if simData not in similarList:
+                    similarList.append(simData)
             else:
-                if p[0] not in similar_list:
-                    similar_list.append(p[0])
+                if p[0] not in similarList:
+                    similarList.append(p[0])
 
-                if len(p) > 1 and p[1] not in similar_list:
-                    similar_list.append(p[1])
+                if len(p) > 1 and p[1] not in similarList:
+                    similarList.append(p[1])
 
-        temp_push = [
-            source, similar_list
+        tempPush = [
+            source, similarList
         ]
         bulka = False
         for k in result:
             if (set(k[0]) & set(source)):
                 k[0] = list(set(k[0]).union(set(source)))
-                k[1] += similar_list
+                k[1] += similarList
                 bulka = True
 
-        if temp_push not in result and not bulka:
-            result.append(temp_push)
+        if tempPush not in result and not bulka:
+            result.append(tempPush)
 
     return result

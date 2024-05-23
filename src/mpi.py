@@ -4,46 +4,53 @@ import json
 
 def tokenizer(filesource, filetokens):
     """
-    Токенизатор из проектов MPI
+    Tokenizer from MPI projects
 
     Args:
-        filesource (list[<string>]): Строки из исходного файла
-        filetokens (src): Содержимое файла с токенами
+        filesource (list[<string>]): Lines from filesource
+        filetokens (src): Content from file with tokens
 
     Returns:
-        list: Список кортежей, содержащих символы и их строки
+        _type_: _description_
     """
     SPECIALS = ['T', 'C', 'K', 'A', 'S', 'L', 'B', 'V', 'F']
 
     TOKENS = json.loads(filetokens)
     data = filesource if type(filesource) is list else filesource.split('\n')
 
-    data = list(map(lambda d: re.sub(r"-?[\d]+[.\d]*", '', d), data))
+    # Чистка числовых констант
+    data = list(map(lambda d: re.sub(r"\-?[\d]+[\.\d]*", '', d), data))
 
+    # Чистка строчных комментариев
     for i in range(len(data)):
-        for ph in re.findall(r"(//.*\n)", data[i]):
+        for ph in re.findall(r"(\/\/.*\n)", data[i]):
             data[i] = data[i].replace(ph, '')
 
+    # Чистка мультистрочных комментариев
     for i in range(len(data)):
-        for ph in re.findall(r'(/\*[\d\D]*)', data[i]):
+        for ph in re.findall(r"(\/\*[\d\D]*)", data[i]):
 
             j = i
-            while not len(re.findall(r'\*/', data[j])):
+            while not len(re.findall(r"\*\/", data[j])):
                 data[j] = ""
                 j += 1
-            data[j] = re.sub(r"\*/", '', data[j])
+            data[j] = re.sub(r"\*\/", '', data[j])
             data[i] = data[i].replace(ph, '')
             i = j - 1
 
     for i in range(len(data)):
+
+        # Чистка подключаемых библиотек комментариев
         for ph in re.findall(r"#[^\n]+", data[i]):
             data[i] = data[i].replace(ph, '')
 
-        for ph in re.findall(r'["\']+.*["\']+', data[i]):
+        # Чистка строчных аргументов
+        for ph in re.findall(r"[\"\']+.*[\"\']+", data[i]):
             data[i] = data[i].replace(ph, '')
 
+            # Чистка строчных аргументов
     for i in range(len(data)):
-        for ph in re.findall(r'["\']+.*["\']+', data[i]):
+        for ph in re.findall(r"[\"\']+.*[\"\']+", data[i]):
             data[i] = data[i].replace(ph, '')
 
     for k in TOKENS['TYPES']:
@@ -67,11 +74,13 @@ def tokenizer(filesource, filetokens):
     for k in TOKENS['OPERATORS_LOG']:
         data = list(map(lambda d: d.replace(k, 'L'), data))
 
-    data = list(map(lambda d: re.sub(r"\.([\d\w_]*)\(", 'F', d), data))
-    data = list(map(lambda d: re.sub(r" ?([\d\w_]+)\(", 'F', d), data))
+    # Поиск методов и функций
+    data = list(map(lambda d: re.sub(r'\.([\d\w\_]*)\(', 'F', d), data))
+    data = list(map(lambda d: re.sub(r' ?([\d\w\_]+)\(', 'F', d), data))
 
+    # Поиск переменных
     for i in range(len(data)):
-        for v in re.findall(r'[TCRBSAL]+ +([A-z0-9_]+)', data[i]):
+        for v in re.findall(r'[TCRBSAL]+ +([A-z0-9\_]+)', data[i]):
             data[i] = data[i].replace(v, 'V')
 
     result = []
