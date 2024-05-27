@@ -73,6 +73,8 @@ def report(data1, data2):
 
 
 def print_report(report, doc1, doc2):
+    results = []
+
     buf = list()
     if len(report) == 0:
         return
@@ -102,8 +104,10 @@ def print_report(report, doc1, doc2):
     buf.append(list((bufl, bufr)))
 
     for item in buf:
-        print('Строки документа', doc1, ' с номерами ', item[0][0], ' - ', item[0][1], ' похожи на строки ', item[1],
-              ' документа ', doc2)
+        results.append(
+            f'Строки документа {doc1} с номерами  {item[0][0]}  -  '
+            f'{item[0][1]} похожи на строки  {item[1]}, документа {doc2}'
+        )
 
     result = []
     for b in buf:
@@ -141,4 +145,5 @@ def print_report(report, doc1, doc2):
         if tempPush not in result and not bulka:
             result.append(tempPush)
 
-    return result
+    # return result
+    return results

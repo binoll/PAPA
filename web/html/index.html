@@ -1,7 +1,7 @@
 {% extends 'base.html'%}
 {% block headerName %} PAPA | Основная страница{% endblock %}
 {% block content %}
-<div class="position-relative">
+<div class="position-relative" xmlns="http://www.w3.org/1999/html">
     <div class="row">
         <div class="col-12">
             <form method="post" action="/papa" enctype="multipart/form-data">
@@ -57,7 +57,7 @@
                                             id="taskNumSelect" disabled>
                                         <option value="" selected>Выберите номер задания из базы</option>
                                         {% for tn in task_nums %}
-                                        <option value="{{tn}}">{{ tn }}</option>
+                                        <option value="{{tn}}">{{tn}}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -93,7 +93,9 @@
                                 data-bs-parent="#accordionExample">
                             <div class="accordion-body">
                                 <div id="results">
-                                    {{ result }}
+                                    {% for result in results %}
+                                    <p>{{ result }}</p>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
@@ -103,7 +105,6 @@
         </div>
     </div>
 </div>
-
 {% block scripts %}
 <script src="{{ url_for('web', path='js/index.js') }}"></script>
 {% endblock %}

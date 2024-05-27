@@ -1,8 +1,9 @@
-import os
+from typing import Optional
+
 import uvicorn
 
-from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Request, File, UploadFile, Form
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette import status
@@ -32,7 +33,10 @@ with open(tokens_json_path, 'r', encoding='utf-8') as tokens:
 
 
 @app.get('/')
-async def home(request: Request, result: str = 'Пока пусто...') -> templates.TemplateResponse:
+async def home(request: Request, results=None) -> templates.TemplateResponse:
+    if results is None:
+        results = ['Пока пусто...']
+
     try:
         subjects = model.get_field_values('subject')
         work_types = model.get_field_values('work_type')
@@ -42,7 +46,7 @@ async def home(request: Request, result: str = 'Пока пусто...') -> temp
             'index.html', {
                 'request': request, 'subjects': subjects,
                 'work_types': work_types, 'task_nums': task_nums,
-                'result': result
+                'results': results
             }
         )
     except Exception as e:
@@ -53,62 +57,63 @@ async def home(request: Request, result: str = 'Пока пусто...') -> temp
 async def add_document(file: UploadFile = File(...)):
     try:
         if not file:
-            return JSONResponse(status_code=400, content={'message': 'File \"{filename}\" not loaded!'})
+            return JSONResponse(status_code=400, content={'message': 'File \'{filename}\' not loaded!'})
 
         if file.filename == '':
-            return JSONResponse(status_code=400, content={'message': 'File \"{filename}\" empty!'})
+            return JSONResponse(status_code=400, content={'message': 'File \'{filename}\' empty!'})
 
         filename = secure_filename(file.filename)
         file_content = await file.read()
         model.add(filename, file_content.decode('utf-8'))
 
-        return JSONResponse(status_code=200, content={'message': f'Файл \"{filename}\" загружен!'})
+        return JSONResponse(status_code=200, content={'message': f'Файл \'{filename}\' загружен!'})
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
 
 
 @app.post('/papa')
-async def papa(request: Request, file: UploadFile = File(...), subject: str = Form(...),
-               work_type: str = Form(...), task_num: str = Form(...)):
+async def papa(request: Request, file: UploadFile = File(...),
+               subject: Optional[str] = Form(None),
+               work_type: Optional[str] = Form(None),
+               task_num: Optional[str] = Form(None)):
     try:
         if not file:
-            return JSONResponse(status_code=400, content={'message': 'File not loaded!'})
+            return JSONResponse(status_code=400, content={'results': ['File not loaded!']})
         if file.filename == '':
-            return JSONResponse(status_code=400, content={'message': 'File empty!'})
+            return JSONResponse(status_code=400, content={'results': ['File empty!']})
 
-        subjects = model.get_field_values('subject')
-        work_types = model.get_field_values('work_type')
-        task_nums = model.get_field_values('task_num')
+        if not subject:
+            subjects = model.get_field_values('subject')
+
+        if not work_type:
+            work_types = model.get_field_values('work_type')
+
+        if not task_num:
+            task_nums = model.get_field_values('task_num')
 
         file_content = await file.read()
         filename = secure_filename(file.filename)
 
         src_filename = 'all' if not subject else subject
         if work_type:
-            src_filename += f"_{work_type}"
+            src_filename += f'_{work_type}'
         if task_num:
-            src_filename += f"_{task_num}"
+            src_filename += f'_{task_num}'
 
-        result = model.papa(file_content.decode('utf-8'), filename, src_filename)
+        results = model.papa(file_content.decode('utf-8'), filename, src_filename)
 
-        if "message" in result:
-            return templates.TemplateResponse(
-                'index.html', {
-                    'request': request, 'subjects': subjects,
-                    'work_types': work_types, 'task_nums': task_nums,
-                    'result': result['message']
-                }
-            )
+        if not results:
+            return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
 
         return templates.TemplateResponse(
             'index.html', {
                 'request': request, 'subjects': subjects,
                 'work_types': work_types, 'task_nums': task_nums,
-                'result': result
+                'results': results
             }
         )
     except Exception as e:
-        return JSONResponse(status_code=500, content={'message': str(e)})
+        return JSONResponse(status_code=500, content={'results': [str(e)]})
 
 
 @app.post('/field/')

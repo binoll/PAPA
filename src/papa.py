@@ -83,7 +83,7 @@ class PAPA:
 
         self.es.indices.refresh()
 
-    def papa(self, file_content, file_name, source):
+    def papa(self, file_content, file_name, source) -> list:
         tokens = self.tokenizer(file_content, self.tokensFileContent)
         tokenstring = ''.join([x[0] for x in tokens])
         fingerprints = fingerprint.fingerprints(tokens, int(K), int(T))
@@ -93,7 +93,7 @@ class PAPA:
         buf = docname.split('_')
 
         if len(buf) != 4:
-            return {'message': 'File name error'}
+            return ['File name error']
 
         author = buf[0]
         subject = buf[1]
@@ -131,17 +131,16 @@ class PAPA:
                     .query('match', subject=buf[0]) \
                     .query('match', work_type=buf[1]) \
                     .query('match', task_num=buf[2])
-
             else:
-                return {'message': 'Incorrect source!'}
+                return ['Incorrect source!']
 
         self.es.indices.refresh(index=NAME_IN)
 
         response = result.execute()
-        reports = list()
+        reports = []
 
         if response.hits.total.value == 0:
-            return {'message': 'ES have no docs to compare!'}
+            return ['ES have no docs to compare!']
 
         else:
             for hit in result.scan():
@@ -158,8 +157,6 @@ class PAPA:
                 reports.append((a, token_distance, fingerprint.report(
                     fingerprints, hit.fingerprints), hit.docname, list(hit.text)))
 
-                print(hit)
-
         reports.sort(key=lambda x: x[0], reverse=True)
 
         results = []
@@ -167,13 +164,13 @@ class PAPA:
         similars_proc = []
 
         for report in reports[:5]:
-            print('Сходство ', docname, ' с документом ',
-                  report[3], ' по Левенштейну - ', report[0], '%, по отпечаткам - ', report[1], '%.')
-            print(report[2])
+            results.append(
+                f'Сходство  {docname} с документом {report[3]} по Левенштейну - {report[0]} %,'
+                f' по отпечаткам -  {report[1]} %.')
             tr = fingerprint.print_report(report[2], docname, report[3])
 
             if tr != None:
-                results.append(tr)
+                results.extend(tr)
                 dst_names.append(report[3])
                 similars_proc.append(str(report[0]) + '%/' + str(report[1]))
 
@@ -187,4 +184,5 @@ class PAPA:
         )
         result = list({v[0] for v in data['rows'] if v[0]})
         result.sort()
+
         return result
