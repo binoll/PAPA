@@ -102,7 +102,6 @@ def print_report(report, doc1, doc2):
     buf.append(list((bufl, bufr)))
 
     for item in buf:
-        # item[1].sort(key=lambda x: x[0])
         print('Строки документа', doc1, ' с номерами ', item[0][0], ' - ', item[0][1], ' похожи на строки ', item[1],
               ' документа ', doc2)
 

@@ -1,4 +1,3 @@
-import os
 from fuzzywuzzy import fuzz
 from src import fingerprint
 from elasticsearch_dsl import Search, Document, Text, Keyword
@@ -54,14 +53,16 @@ class PAPA:
 
         tokens = self.tokenizer(text, self.tokensFileContent)
         tokenstring = ''.join([x[0] for x in tokens])
-        fingerprints = fingerprint.fingerprints(tokens, int(os.environ.get('K')), int(os.environ.get('T')))
+        fingerprints = fingerprint.fingerprints(tokens, int(K), int(T))
 
         buf = filename.split('/')
         docname = buf[-1]
         buf = docname.split('_')
+
         if len(buf) != 4:
             print(filename, ' - filename error')
             exit()
+
         author = buf[0]
         subject = buf[1]
         work_type = buf[2]
@@ -85,14 +86,14 @@ class PAPA:
     def papa(self, file_content, file_name, source):
         tokens = self.tokenizer(file_content, self.tokensFileContent)
         tokenstring = ''.join([x[0] for x in tokens])
-        fingerprints = fingerprint.fingerprints(tokens, int(os.environ.get('K')), int(os.environ.get('T')))
+        fingerprints = fingerprint.fingerprints(tokens, int(K), int(T))
 
         buf = file_name.split('/')
         docname = buf[-1]
         buf = docname.split('_')
+
         if len(buf) != 4:
             return {'message': 'File name error'}
-            exit()
 
         author = buf[0]
         subject = buf[1]
@@ -166,22 +167,17 @@ class PAPA:
         similars_proc = []
 
         for report in reports[:5]:
-            print()
             print('Сходство ', docname, ' с документом ',
                   report[3], ' по Левенштейну - ', report[0], '%, по отпечаткам - ', report[1], '%.')
             print(report[2])
             tr = fingerprint.print_report(report[2], docname, report[3])
+
             if tr != None:
                 results.append(tr)
                 dst_names.append(report[3])
                 similars_proc.append(str(report[0]) + '%/' + str(report[1]))
 
-        return {
-            'diff': results,
-            'dst_code': [r[-1] for r in reports[:5]],
-            'dst_name': dst_names,
-            'sims': similars_proc
-        }
+        return results
 
     def get_field_values(self, field):
         data = self.es.sql.query(
