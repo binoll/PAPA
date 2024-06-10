@@ -1,8 +1,9 @@
 import re
 import json
+from typing import List
 
 
-def tokenizer(filesource, filetokens):
+def tokenizer(filesource: List, filetokens: str) -> List:
     """
     Tokenizer from MPI projects
 
