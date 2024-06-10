@@ -1,0 +1,16 @@
+.form-group {
+    margin-bottom: 20px;
+}
+
+.btn-primary {
+    width: 200px;
+    margin-top: 20px;
+}
+
+.form-control {
+    width: 300px;
+}
+
+.main-container {
+    text-align: center;
+}

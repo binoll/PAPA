@@ -24,3 +24,6 @@ tqdm
 urllib3
 Werkzeug
 loguru
+jose
+passlib
+jwt

@@ -1,8 +1,8 @@
 from typing import Optional
 
 import uvicorn
-
-from fastapi import FastAPI, Request, File, UploadFile, Form
+from fastapi import FastAPI, Request, File, UploadFile, Form, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -31,9 +31,65 @@ with open(tokens_json_path, 'r', encoding='utf-8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
     model.create_index()
 
+# OAuth2 setup
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+users_db = {
+    "user": {
+        "username": "user",
+        "full_name": "John Doe",
+        "email": "user@example.com",
+        "hashed_password": "fakehashedpassword",
+        "disabled": False,
+    }
+}
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return user_dict
+    return None
+
+
+def fake_decode_token(token):
+    user = get_user(users_db, token)
+    return user
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+@app.post("/token")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user_dict = users_db.get(form_data.username)
+
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = user_dict
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user['hashed_password']:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    response = RedirectResponse(url="/")
+    return response
+
 
 @app.get('/')
-async def home(request: Request, results=None) -> templates.TemplateResponse:
+async def home(request: Request,
+               results=None) -> templates.TemplateResponse:
     if results is None:
         results = ['Пока пусто...']
 
@@ -50,7 +106,17 @@ async def home(request: Request, results=None) -> templates.TemplateResponse:
             }
         )
     except Exception as e:
-        return JSONResponse(status_code=500, content={'message': str(e)})
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/login')
+async def login_page(request: Request):
+    return templates.TemplateResponse('login.html', {'request': request})
+
+
+@app.get('/add')
+async def add_file_page(request: Request, current_user: dict = Depends(get_current_user)):
+    return templates.TemplateResponse('add.html', {'request': request, 'user': current_user})
 
 
 @app.post('/add_file')
@@ -82,14 +148,9 @@ async def papa(request: Request, file: UploadFile = File(...),
         if file.filename == '':
             return JSONResponse(status_code=400, content={'results': ['File empty!']})
 
-        if not subject:
-            subjects = model.get_field_values('subject')
-
-        if not work_type:
-            work_types = model.get_field_values('work_type')
-
-        if not task_num:
-            task_nums = model.get_field_values('task_num')
+        subjects = model.get_field_values('subject')
+        work_types = model.get_field_values('work_type')
+        task_nums = model.get_field_values('task_num')
 
         file_content = await file.read()
         filename = secure_filename(file.filename)
@@ -103,7 +164,7 @@ async def papa(request: Request, file: UploadFile = File(...),
         results = model.papa(file_content.decode('utf-8'), filename, src_filename)
 
         if not results:
-            return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
 
         return templates.TemplateResponse(
             'index.html', {
@@ -123,11 +184,6 @@ async def field_list(name: str = Form(...)):
         return JSONResponse(content={'result': data})
     except Exception as e:
         return JSONResponse(status_code=500, content={'message': str(e)})
-
-
-@app.get('/add')
-async def add_file_page(request: Request):
-    return templates.TemplateResponse('add.html', {'request': request})
 
 
 if __name__ == '__main__':
