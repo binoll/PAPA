@@ -167,7 +167,7 @@ class PAPA:
          tokens, token_string, fingerprints) = self.process_tokens(file_name, file_content)
 
         if [author, document_name, buf, tokens,
-            token_string, fingerprints] == [None, None, None, None, None, None]:
+                token_string, fingerprints] == [None, None, None, None, None, None]:
             return ['File name is incorrect!']
 
         new_hash_fingerprints = list(x[0] for x in fingerprints)
@@ -185,8 +185,9 @@ class PAPA:
                           .query('match', work_type=buf[1]))
             elif len(buf) == 3:
                 result = (Search(using=self.es, index=NAME_IN)
-                .query('match', subject=buf[0]).query('match', work_type=buf[1]).query(
-                    'match', task_num=buf[2]))
+                          .query('match', subject=buf[0])
+                          .query('match', work_type=buf[1])
+                          .query('match', task_num=buf[2]))
             else:
                 return ['Incorrect source!']
 
