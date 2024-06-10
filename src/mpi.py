@@ -2,91 +2,90 @@ import re
 import json
 from typing import List
 
+SPECIALS = ['T', 'C', 'K', 'A', 'S', 'L', 'B', 'V', 'F']
 
-def tokenizer(filesource: List, filetokens: str) -> List:
+
+def remove_patterns(data: List[str], pattern: str) -> List[str]:
+    """
+    Remove specific patterns from each line in data.
+
+    Args:
+        data (List[str]): Lines of text to process.
+        pattern (str): The regex pattern to remove from each line.
+
+    Returns:
+        List[str]: The processed lines with the pattern removed.
+    """
+    return [re.sub(pattern, '', line) for line in data]
+
+
+def replace_patterns(data: List[str], pattern: str, replacement: str) -> List[str]:
+    """
+    Replace specific patterns in each line with a replacement string.
+
+    Args:
+        data (List[str]): Lines of text to process.
+        pattern (str): The regex pattern to replace in each line.
+        replacement (str): The string to replace the pattern with.
+
+    Returns:
+        List[str]: The processed lines with the pattern replaced.
+    """
+    return [re.sub(pattern, replacement, line) for line in data]
+
+
+def tokenizer(file_source: List[str] | str, file_tokens: str) -> List[tuple]:
     """
     Tokenizer from MPI projects
 
     Args:
-        filesource (list[<string>]): Lines from filesource
-        filetokens (src): Content from file with tokens
+        file_source (List[str]): Lines from file source.
+        file_tokens (str): Content from file with tokens.
 
     Returns:
-        _type_: _description_
+        List[tuple]: List of tokens with their line numbers.
     """
-    SPECIALS = ['T', 'C', 'K', 'A', 'S', 'L', 'B', 'V', 'F']
+    result = []
 
-    TOKENS = json.loads(filetokens)
-    data = filesource if type(filesource) is list else filesource.split('\n')
+    tokens = json.loads(file_tokens)
+    data = file_source if isinstance(file_source, list) else file_source.split('\n')
 
-    # Чистка числовых констант
-    data = list(map(lambda d: re.sub(r"\-?[\d]+[\.\d]*", '', d), data))
+    data = remove_patterns(data, r"\-?[\d]+[\.\d]*")
 
-    # Чистка строчных комментариев
-    for i in range(len(data)):
-        for ph in re.findall(r"(\/\/.*\n)", data[i]):
-            data[i] = data[i].replace(ph, '')
-
-    # Чистка мультистрочных комментариев
-    for i in range(len(data)):
-        for ph in re.findall(r"(\/\*[\d\D]*)", data[i]):
-
-            j = i
-            while not len(re.findall(r"\*\/", data[j])):
-                data[j] = ""
-                j += 1
-            data[j] = re.sub(r"\*\/", '', data[j])
-            data[i] = data[i].replace(ph, '')
-            i = j - 1
+    data = remove_patterns(data, r"(\/\/.*\n)")
+    data = remove_patterns(data, r"#.*")
 
     for i in range(len(data)):
+        if "/*" in data[i]:
+            end_comment_index = i
+            while end_comment_index < len(data) and "*/" not in data[end_comment_index]:
+                data[end_comment_index] = ""
+                end_comment_index += 1
+            if end_comment_index < len(data):
+                data[end_comment_index] = re.sub(r"\*/", '', data[end_comment_index])
+            data[i] = re.sub(r"/\*[\d\D]*", '', data[i])
 
-        # Чистка подключаемых библиотек комментариев
-        for ph in re.findall(r"#[^\n]+", data[i]):
-            data[i] = data[i].replace(ph, '')
+    data = remove_patterns(data, r"[\"\']+.*[\"\']+")
 
-        # Чистка строчных аргументов
-        for ph in re.findall(r"[\"\']+.*[\"\']+", data[i]):
-            data[i] = data[i].replace(ph, '')
+    token_categories = [
+        ('TYPES', 'T'), ('CYCLES', 'C'), ('K_WORDS', 'K'),
+        ('OPERATORS_BIT', 'B'), ('OPERATORS_SRVN', 'S'),
+        ('OPERATORS_ARIFM', 'A'), ('OPERATORS_LOG', 'L')
+    ]
 
-            # Чистка строчных аргументов
+    for category, replacement in token_categories:
+        for k in tokens[category]:
+            data = [line.replace(k, replacement) for line in data]
+
+    data = replace_patterns(data, r'\.([\d\w\_]*)\(', 'F')
+    data = replace_patterns(data, r' ?([\d\w\_]+)\(', 'F')
+
     for i in range(len(data)):
-        for ph in re.findall(r"[\"\']+.*[\"\']+", data[i]):
-            data[i] = data[i].replace(ph, '')
-
-    for k in TOKENS['TYPES']:
-        data = list(map(lambda d: d.replace(k, 'T'), data))
-
-    for k in TOKENS['CYCLES']:
-        data = list(map(lambda d: d.replace(k, 'C'), data))
-
-    for k in TOKENS['K_WORDS']:
-        data = list(map(lambda d: d.replace(k, 'K'), data))
-
-    for k in TOKENS['OPERATORS_BIT']:
-        data = list(map(lambda d: d.replace(k, 'B'), data))
-
-    for k in TOKENS['OPERATORS_SRVN']:
-        data = list(map(lambda d: d.replace(k, 'S'), data))
-
-    for k in TOKENS['OPERATORS_ARIFM']:
-        data = list(map(lambda d: d.replace(k, 'A'), data))
-
-    for k in TOKENS['OPERATORS_LOG']:
-        data = list(map(lambda d: d.replace(k, 'L'), data))
-
-    # Поиск методов и функций
-    data = list(map(lambda d: re.sub(r'\.([\d\w\_]*)\(', 'F', d), data))
-    data = list(map(lambda d: re.sub(r' ?([\d\w\_]+)\(', 'F', d), data))
-
-    # Поиск переменных
-    for i in range(len(data)):
-        for v in re.findall(r'[TCRBSAL]+ +([A-z0-9\_]+)', data[i]):
+        for v in re.findall(r'[TCRBSAL]+ +([A-z0-9_]+)', data[i]):
             data[i] = data[i].replace(v, 'V')
 
-    result = []
-    for i in range(len(data)):
-        for symbol in data[i]:
+    for i, line in enumerate(data):
+        for symbol in line:
             if symbol in SPECIALS:
                 result.append((symbol, i + 1))
 
