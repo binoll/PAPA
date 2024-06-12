@@ -3,21 +3,21 @@
 {% block headerName %}PAPA | Добавление файла{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <form action="/add_file" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="formFile" class="form-label">Выберите ваш файл</label>
-                        <input class="form-control" type="file" id="formFile" name="file" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Добавить файл</button>
-                </form>
-            </div>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <form id="uploadForm">
+                <div class="mb-3">
+                    <label for="formFile" class="form-label">Выберите ваш файл</label>
+                    <input class="form-control" type="file" id="formFile" name="file" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Добавить файл</button>
+            </form>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block additional_scripts %}
-    <script src="{{ url_for('web', path='js/upload.js') }}"></script>
+<script src="{{ url_for('web', path='js/upload.js') }}"></script>
 {% endblock %}

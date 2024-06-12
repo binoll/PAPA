@@ -1,70 +1,114 @@
+"""
+This module provides functions to generate fingerprints.
+"""
+
 from nltk import ngrams
-import itertools, hashlib
+import hashlib
+
+from typing import List, Tuple
 
 
-def str_to_hash(str):
-    sum = int(hashlib.sha1(''.join([t[0] for t in str]).encode("utf-8")).hexdigest(), 16) % (10 ** 8)
-    return (sum, str[0][1], str[-1][1])
+def str_to_hash(s: List[Tuple[str, int]]) -> Tuple[int, int, int]:
+    """
+    Convert a list of tuples to a hash value.
+
+    Args:
+        s (List[Tuple[str, int]]): List of tuples containing characters and their positions.
+
+    Returns:
+        Tuple[int, int, int]: Hash value along with the position of the first and last character.
+    """
+    sum_hash = int(hashlib.sha1(''.join([t[0] for t in s]).encode("utf-8")).hexdigest(), 16) % (10 ** 8)
+    return sum_hash, s[0][1], s[-1][1]
 
 
-def right_index(el, str):
-    x = [i for i, ltr in enumerate(str) if ltr[0] == el[0]]
-    return x[-1]
+def right_index(el: Tuple[str, int], s: List[Tuple[str, int]]) -> int:
+    """
+    Find the rightmost index of a character in a list of tuples.
+
+    Args:
+        el (Tuple[str, int]): Character tuple to search for.
+        s (List[Tuple[str, int]]): List of tuples to search in.
+
+    Returns:
+        int: Index of the rightmost occurrence of the character.
+    """
+    indices = [i for i, ltr in enumerate(s) if ltr[0] == el[0]]
+    return indices[-1]
 
 
-def fingerprints(data, k, t):
-    kgrams = list(ngrams(data, k))
+def fingerprints(data: List[str], k: int, t: int) -> List[Tuple[int, int, int]]:
+    """
+    Generate fingerprint for a given sequence of characters.
 
-    hashes = list()
+    Args:
+        data (List[str]): Sequence of characters.
+        k (int): Size of each gram.
+        t (int): Size of the sliding window.
 
-    for gram in kgrams:
+    Returns:
+        List[Tuple[int, int, int]]: List of fingerprint tuples.
+    """
+
+    grams = list(ngrams(data, k))
+    fingerprint = []
+    hashes = []
+
+    for gram in grams:
         hashes.append(str_to_hash(gram))
 
     w = t - k + 1
-    tHgrams = list(ngrams(hashes, w))
+    t_grams = list(ngrams(hashes, w))
 
-    fngrprnts = list()
     m = (0, 0, 0)
-    lpos = 0
+    pos = 0
 
-    for gram in tHgrams:
+    for gram in t_grams:
         if m == min(gram):
-            if (gram.count(m) >= 1) and (right_index(m, gram) > lpos):
-                lpos = right_index(m, gram)
-                fngrprnts.append(gram[lpos])
-                m = gram[lpos]
+            if (gram.count(m) >= 1) and (right_index(m, gram) > pos):
+                pos = right_index(m, gram)
+                fingerprint.append(gram[pos])
+                m = gram[pos]
             else:
-                lpos -= 1
+                pos -= 1
         else:
             m = min(gram, key=lambda x: x[0])
-            lpos = right_index(m, gram)
-            fngrprnts.append(gram[lpos])
-            m = gram[lpos]
+            pos = right_index(m, gram)
+            fingerprint.append(gram[pos])
+            m = gram[pos]
 
-    result = list()
-    for i in fngrprnts:
+    result = []
+    for i in fingerprint:
         if i not in result:
             result.append(i)
 
     return result
 
 
-def report(data1, data2):
+def report(data1: List[Tuple[int, int, int]], data2: List[Tuple[int, int, int]]) \
+        -> List[Tuple[int, int, int, int, int]]:
+    """
+    Generate a report based on fingerprint matches between two sets of data.
+
+    Args:
+        data1 (List[Tuple[int, int, int]]): First set of fingerprint tuples.
+        data2 (List[Tuple[int, int, int]]): Second set of fingerprint tuples.
+
+    Returns:
+        List[Tuple[int, int, int, int, int]]: List of tuples representing matches between the two sets of data.
+    """
+
     result = []
-    for x in data1:
-        finder = list(filter(
-            lambda x2: x2[0] == x[0],
-            data2
-        ))
+
+    for item in data1:
+        finder = list(filter(lambda x2: x2[0] == item[0], data2))
         if finder:
             for r in finder:
-                result.append((
-                    x[0], x[1], x[2], r[1], r[2]
-                ))
+                result.append((item[0], item[1], item[2], r[1], r[2]))
 
     result.sort(key=lambda x: x[0])
 
-    res = list()
+    res = []
     for i in result:
         if i not in res:
             res.append(i)
@@ -72,78 +116,55 @@ def report(data1, data2):
     return res
 
 
-def print_report(report, doc1, doc2):
+def print_report(report_list: str | List, doc1: str, doc2: str) -> List[str]:
+    """
+    Generate a human-readable report based on fingerprint matches between two documents.
+
+    Args:
+        report_list (List[Tuple[int, int, int, int, int]]):
+            List of tuples representing matches between two sets of data.
+        doc1 (str): Name of the first document.
+        doc2 (str): Name of the second document.
+
+    Returns:
+        List[str]: List of strings representing the human-readable report.
+    """
+
     results = []
+    buf = []
 
-    buf = list()
-    if len(report) == 0:
-        return
-    report.sort(key=lambda x: x[1])
+    if len(report_list) == 0:
+        return []
 
-    for str in report:
-        buf.append(list((str[1:5])))
+    report_list.sort(key=lambda x: x[1])
 
-    report.clear()
+    for str_tuple in report_list:
+        buf.append(list((str_tuple[1:5])))
+
+    report_list.clear()
 
     for i in buf:
-        if i not in report:
-            report.append(i)
+        if i in report_list:
+            continue
+        report_list.append(i)
 
     buf.clear()
-    bufl = list((report[0][0:2]))
-    bufr = list()
+    buffalo = list((report_list[0][0:2]))
+    buffer = []
 
-    for item in report:
-        if list(item[0:2]) == bufl:
-            bufr.append(item[2:5])
+    for item in report_list:
+        if list(item[0:2]) == buffalo:
+            buffer.append(item[2:5])
         else:
-            buf.append(list((bufl, bufr)))
-            bufl = list(item[0:2])
-            bufr = list()
-            bufr.append(item[2:5])
-    buf.append(list((bufl, bufr)))
+            buf.append(list((buffalo, buffer)))
+            buffalo = list(item[0:2])
+            buffer.append(item[2:5])
+    buf.append(list((buffalo, buffer)))
 
     for item in buf:
         results.append(
-            f'Строки документа {doc1} с номерами  {item[0][0]}  -  '
-            f'{item[0][1]} похожи на строки  {item[1]}, документа {doc2}'
+            f'Strings from document {doc1} with line numbers {item[0][0]} - '
+            f'{item[0][1]} are similar to strings {item[1]} from document {doc2}'
         )
 
-    result = []
-    for b in buf:
-        source = [x for x in range(b[0][0], b[0][1] + 1)]
-        b[1] = [
-            [s for s in range(x[0], x[1] + 1)]
-            for x in b[1]
-        ]
-
-        similarList = []
-        for p in itertools.permutations(b[1]):
-            if (len(p) > 1 and (set(p[0]) & set(p[1]))):
-                simData = list(set(p[0]).union(set(p[1])))
-                simData.sort()
-
-                if simData not in similarList:
-                    similarList.append(simData)
-            else:
-                if p[0] not in similarList:
-                    similarList.append(p[0])
-
-                if len(p) > 1 and p[1] not in similarList:
-                    similarList.append(p[1])
-
-        tempPush = [
-            source, similarList
-        ]
-        bulka = False
-        for k in result:
-            if (set(k[0]) & set(source)):
-                k[0] = list(set(k[0]).union(set(source)))
-                k[1] += similarList
-                bulka = True
-
-        if tempPush not in result and not bulka:
-            result.append(tempPush)
-
-    # return result
     return results

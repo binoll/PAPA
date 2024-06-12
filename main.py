@@ -14,9 +14,9 @@ from elasticsearch_dsl import connections
 from src import mpi, papa
 from loguru import logger
 
-HOST = '0.0.0.0'
+HOST = '127.0.0.1'
 PORT = 9200
-tokens_json_path = 'src/tokens/mpi.json'
+TOKENS_JSON_PATH = 'src/tokens/mpi.json'
 
 es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
@@ -27,69 +27,13 @@ app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
 
-with open(tokens_json_path, 'r', encoding='utf-8') as tokens:
+with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
     model.create_index()
 
-# OAuth2 setup
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-users_db = {
-    "user": {
-        "username": "user",
-        "full_name": "John Doe",
-        "email": "user@example.com",
-        "hashed_password": "fakehashedpassword",
-        "disabled": False,
-    }
-}
-
-
-def fake_hash_password(password: str):
-    return "fakehashed" + password
-
-
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return user_dict
-    return None
-
-
-def fake_decode_token(token):
-    user = get_user(users_db, token)
-    return user
-
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    user = fake_decode_token(token)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-
-@app.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user_dict = users_db.get(form_data.username)
-
-    if not user_dict:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    user = user_dict
-    hashed_password = fake_hash_password(form_data.password)
-    if not hashed_password == user['hashed_password']:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-
-    response = RedirectResponse(url="/")
-    return response
-
 
 @app.get('/')
-async def home(request: Request,
-               results=None) -> templates.TemplateResponse:
+async def home(request: Request, results=None) -> templates.TemplateResponse:
     if results is None:
         results = ['Пока пусто...']
 
@@ -106,35 +50,49 @@ async def home(request: Request,
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get('/login')
-async def login_page(request: Request):
-    return templates.TemplateResponse('login.html', {'request': request})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @app.get('/add')
-async def add_file_page(request: Request, current_user: dict = Depends(get_current_user)):
-    return templates.TemplateResponse('add.html', {'request': request, 'user': current_user})
+async def add_file_page(request: Request):
+    return templates.TemplateResponse('add.html', {'request': request})
 
 
 @app.post('/add_file')
 async def add_document(file: UploadFile = File(...)):
     try:
         if not file:
-            return JSONResponse(status_code=400, content={'message': 'File \'{filename}\' not loaded!'})
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={'message': 'Файл не загружен!'}
+            )
 
         if file.filename == '':
-            return JSONResponse(status_code=400, content={'message': 'File \'{filename}\' empty!'})
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={'message': 'Пустое имя файла!'}
+            )
 
         filename = secure_filename(file.filename)
         file_content = await file.read()
-        model.add(filename, file_content.decode('utf-8'))
 
-        return JSONResponse(status_code=200, content={'message': f'Файл \'{filename}\' загружен!'})
+        result = model.add(filename, file_content.decode('utf-8'))
+
+        if result:
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={'message': f'Файл \"{filename}\" загружен!'}
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'message': f'Файл \"{filename}\" не загружен! Неправильный формат файла!'}
+        )
     except Exception as e:
-        return JSONResponse(status_code=500, content={'message': str(e)})
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={'message': str(e)})
 
 
 @app.post('/papa')
@@ -144,9 +102,16 @@ async def papa(request: Request, file: UploadFile = File(...),
                task_num: Optional[str] = Form(None)):
     try:
         if not file:
-            return JSONResponse(status_code=400, content={'results': ['File not loaded!']})
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={'message': 'Файл не загружен!'}
+            )
+
         if file.filename == '':
-            return JSONResponse(status_code=400, content={'results': ['File empty!']})
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={'message': 'Пустое имя файла!'}
+            )
 
         subjects = model.get_field_values('subject')
         work_types = model.get_field_values('work_type')
@@ -163,8 +128,13 @@ async def papa(request: Request, file: UploadFile = File(...),
 
         results = model.papa(file_content.decode('utf-8'), filename, src_filename)
 
-        if not results:
-            return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
+        if len(results) == 1:
+            results = results[0]
+        elif len(results) > 1 and len(results['diff']) == 0:
+            results = None
+        else:
+            results = (results['dst_name'] + ' ' + results['dst_code'] +
+                       ' ' + results['diff'] + ' ' + results['sims'])
 
         return templates.TemplateResponse(
             'index.html', {
@@ -173,18 +143,9 @@ async def papa(request: Request, file: UploadFile = File(...),
                 'results': results
             }
         )
-    except Exception as e:
-        return JSONResponse(status_code=500, content={'results': [str(e)]})
-
-
-@app.post('/field/')
-async def field_list(name: str = Form(...)):
-    try:
-        data = model.get_field_values(name)
-        return JSONResponse(content={'result': data})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={'message': str(e)})
+    except Exception:
+        return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
 
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='127.0.0.1', port=8000)

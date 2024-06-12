@@ -1,5 +1,5 @@
 """
-The module searches for a document for plagiarism.
+This module searches for a document for plagiarism.
 """
 
 from typing import List, Callable, Union, Any
@@ -7,7 +7,7 @@ from fuzzywuzzy import fuzz
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Document, Text, Keyword
 
-import fingerprint
+from src.fingerprint import fingerprints, report, print_report
 
 K = 10
 T = 13
@@ -34,6 +34,7 @@ class Article(Document):
         """
         Indexes all article documents.
         """
+
         name = NAME_IN
         settings = {
             'number_of_shards': 4,
@@ -59,7 +60,7 @@ class PAPA:
     """
 
     def __init__(self, es: Elasticsearch,
-                 token_function: Callable[[str, str], List[str]],
+                 token_function: Callable,
                  token_file_content: str):
         """
         Initializes the PAPA class.
@@ -78,6 +79,7 @@ class PAPA:
         """
         Creates an Elasticsearch index if it does not already exist.
         """
+
         if self.es.indices.exists(index=NAME_IN):
             return
 
@@ -89,12 +91,13 @@ class PAPA:
         """
         Deletes and recreates the Elasticsearch index.
         """
+
         if self.es.indices.exists(index=NAME_IN):
             self.es.indices.delete(index=NAME_IN)
             self.create_index()
 
     def process_tokens(self, file_name: str, file_content: Union[str, List[str]]) \
-            -> list[None] | list[str | list[str] | Any]:
+            -> None | List[str | List[str] | Any]:
         """
         Processes the tokens from the file content.
 
@@ -106,16 +109,17 @@ class PAPA:
             Tuple[str, str, List[str], List[str], str, Any]: Tuple containing document name,
             buffer split parts, tokens, token string, and fingerprints.
         """
+
         tokens = self.tokenizer(file_content, self.tokens_file_content)
         token_string = ''.join([x[0] for x in tokens])
-        fingerprints = fingerprint.fingerprints(tokens, int(K), int(T))
+        fingerprint = fingerprints(tokens, int(K), int(T))
 
         buf = file_name.split('/')
         document_name = buf[-1]
         buf = document_name.split('_')
 
         if len(buf) != 4:
-            return [None, None, None, None, None, None]
+            return [None, None, None, None, None, None, None]
 
         author = buf[0]
         subject = buf[1]
@@ -132,21 +136,31 @@ class PAPA:
         article.text = file_content
         article.tokens = tokens
         article.token_string = token_string
-        article.fingerprints = fingerprints
+        article.fingerprints = fingerprint
 
-        return [author, document_name, buf, tokens, token_string, fingerprints]
+        return [article, author, document_name, buf, tokens, token_string, fingerprint]
 
-    def add(self, file_name: str, file_content: Union[str, List[str]]) -> None:
+    def add(self, file_name: str, file_content: Union[str, List[str]]) -> bool:
         """
         Adds a document to the Elasticsearch index.
 
         Args:
             file_name (str): File name.
             file_content (Union[str, List[str]]): File content.
+
+        Returns:
+            bool: True if the document was added, False otherwise.
         """
+
         file_content = file_content if isinstance(file_content, list) else file_content.split('\n')
-        self.process_tokens(file_name, file_content)
+        article = self.process_tokens(file_name, file_content)
+
+        if article == [None, None, None, None, None, None, None]:
+            return False
+
+        article[0].save()
         self.es.indices.refresh()
+        return True
 
     def papa(self, file_content: Union[str, List[str]], file_name: str, source: str) \
             -> Union[List[str], dict[str, Union[List[str], List[List[Any]], List[Any]]]]:
@@ -163,14 +177,20 @@ class PAPA:
             Union[List[str], dict[str, Union[List[str], List[List[Any]], List[Any]]]]:
             Similarity reports or an error message.
         """
-        (author, document_name, buf,
-         tokens, token_string, fingerprints) = self.process_tokens(file_name, file_content)
 
-        if [author, document_name, buf, tokens,
-                token_string, fingerprints] == [None, None, None, None, None, None]:
+        reports = []
+        results = []
+        dst_names = []
+        similar_proc = []
+
+        (article, author, document_name, buf,
+         tokens, token_string, fingerprint) = self.process_tokens(file_name, file_content)
+
+        if [article, author, document_name, buf, tokens,
+                token_string, fingerprint] == [None, None, None, None, None, None, None]:
             return ['File name is incorrect!']
 
-        new_hash_fingerprints = list(x[0] for x in fingerprints)
+        new_hash_fingerprints = list(x[0] for x in fingerprint)
 
         if source.lower() == 'all':
             result = Search(using=self.es, index=NAME_IN).query('match', index_name=NAME_IN)
@@ -193,7 +213,6 @@ class PAPA:
 
         self.es.indices.refresh(index=NAME_IN)
         response = result.execute()
-        reports = []
 
         if response.hits.total.value == 0:
             return ['ES have no docs to compare!']
@@ -201,33 +220,32 @@ class PAPA:
         for hit in result.scan():
             if hit.author == author:
                 continue
+
             if hit.document_name == document_name:
                 continue
+
             a = fuzz.ratio(token_string, hit.token_string)
-            old_hash_fingerprints = list(x[0] for x in hit.fingerprints)
+            old_hash_fingerprints = list(x[0] for x in hit.fingerprint)
             intersection = list(set(new_hash_fingerprints).intersection(set(old_hash_fingerprints)))
             token_distance = len(intersection) / max(len(set(old_hash_fingerprints)),
                                                      len(set(new_hash_fingerprints))) * 100
             reports.append((a, token_distance,
-                            fingerprint.report(fingerprints, hit.fingerprints),
+                            report(fingerprint, hit.fingerprint),
                             hit.document_name,
                             list(hit.text)))
 
         reports.sort(key=lambda x: x[0], reverse=True)
-        results = []
-        dst_names = []
-        similar_proc = []
 
-        for report in reports[:5]:
+        for item in reports[:5]:
             results.append(
-                f'Сходство  {document_name} с документом {report[3]} '
-                f'по Левенштейну - {report[0]} %, по отпечаткам -  {report[1]} %.')
-            tr = fingerprint.print_report(report[2], document_name, report[3])
+                f'Сходство  {document_name} с документом {item[3]} '
+                f'по Левенштейну - {item[0]} %, по отпечаткам -  {item[1]} %.')
+            tr = print_report(item[2], document_name, item[3])
 
             if tr is not None:
                 results.extend(tr)
-                dst_names.append(report[3])
-                similar_proc.append(f'{report[0]}%/{report[1]}%')
+                dst_names.append(item[3])
+                similar_proc.append(f'{item[0]}%/{item[1]}%')
 
         return {
             'diff': results,
@@ -246,6 +264,7 @@ class PAPA:
         Returns:
             List[str]: Sorted list of distinct field values.
         """
+
         data = self.es.sql.query(body={'query': f'SELECT {field} FROM {NAME_IN}'})
         result = list({v[0] for v in data['rows'] if v[0]})
         result.sort()

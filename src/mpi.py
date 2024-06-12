@@ -1,5 +1,11 @@
+"""
+This module provides functions for tokenizing source code files according to specific rules
+defined in a tokens configuration file.
+"""
+
 import re
 import json
+
 from typing import List
 
 SPECIALS = ['T', 'C', 'K', 'A', 'S', 'L', 'B', 'V', 'F']
@@ -16,6 +22,7 @@ def remove_patterns(data: List[str], pattern: str) -> List[str]:
     Returns:
         List[str]: The processed lines with the pattern removed.
     """
+
     return [re.sub(pattern, '', line) for line in data]
 
 
@@ -31,6 +38,7 @@ def replace_patterns(data: List[str], pattern: str, replacement: str) -> List[st
     Returns:
         List[str]: The processed lines with the pattern replaced.
     """
+
     return [re.sub(pattern, replacement, line) for line in data]
 
 
@@ -45,6 +53,7 @@ def tokenizer(file_source: List[str] | str, file_tokens: str) -> List[tuple]:
     Returns:
         List[tuple]: List of tokens with their line numbers.
     """
+
     result = []
 
     tokens = json.loads(file_tokens)
