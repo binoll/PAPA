@@ -1,3 +1,102 @@
-td, tr {
-    overflow-wrap: break-word;
+body {
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.results-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.result-card {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.result-card p {
+    margin: 0;
+}
+
+.accordion-button {
+    font-weight: bold;
+    background-color: #17a2b8;
+    color: white;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #138496;
+}
+
+.accordion-body {
+    background-color: #e9ecef;
+}
+
+.accordion-item {
+    border: none;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+}
+
+.accordion-button:hover {
+    background-color: #138496;
+}
+
+.btn-info {
+    background-color: #17a2b8;
+    border: none;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    transform: scale(1.05);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border: none;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #f8f9fa;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    height: 50px; /* or the height you need */
+    line-height: 50px; /* vertically center the text */
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

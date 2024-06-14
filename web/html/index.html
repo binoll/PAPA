@@ -1,79 +1,68 @@
-{% extends 'base.html'%}
-{% block headerName %} PAPA | Основная страница{% endblock %}
+{% extends 'base.html' %}
+{% block headerName %}PAPA | Основная страница{% endblock %}
 {% block content %}
-<div class="position-relative" xmlns="http://www.w3.org/1999/html">
-    <div class="row">
-        <div class="col-12">
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8">
             <form method="post" action="/papa" enctype="multipart/form-data">
-                <div class="accordion accordion-flush" id="accordionFlushExample">
+                <div class="accordion" id="accordionExample">
                     <div class="accordion-item">
-                        <h2 class="accordion-header" id="flush-headingTwo">
+                        <h2 class="accordion-header" id="headingTwo">
                             <button
                                     class="accordion-button"
                                     type="button"
                                     data-bs-toggle="collapse"
-                                    data-bs-target="#flush-collapseTwo"
+                                    data-bs-target="#collapseTwo"
                                     aria-expanded="true"
-                                    aria-controls="flush-collapseTwo"
+                                    aria-controls="collapseTwo"
                             >
                                 Сравнить файл с базой
                             </button>
                         </h2>
                         <div
-                                id="flush-collapseTwo"
-                                class="accordion-collapse show"
-                                aria-labelledby="flush-headingTwo"
-                                data-bs-parent="#accordionFlushExample"
+                                id="collapseTwo"
+                                class="accordion-collapse collapse show"
+                                aria-labelledby="headingTwo"
                         >
                             <div class="accordion-body">
-                                <div class="mb-3">
-                                    <label for="formFile" class="form-label">
-                                        Загрузите ваш файл
-                                    </label>
-                                    <input class="form-control" type="file" id="formFile" name="file"/>
+                                <div class="mb-3 text-center">
+                                    <label for="formFile" class="form-label btn btn-info" id="fileLabel">Загрузите ваш
+                                        файл</label>
+                                    <input class="form-control" type="file" id="formFile" name="file"
+                                           style="display: none;"/>
                                 </div>
                                 <div class="mb-3">
                                     <select class="form-select" aria-label="Default select example" name="subject"
                                             id="subjectSelect">
                                         <option value="" selected>Выберите предмет из базы</option>
                                         {% for sub in subjects %}
-                                        <option value="{{sub}}">{{sub}}</option>
+                                        <option value="{{ sub }}">{{ sub }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-
                                 <div class="mb-3">
                                     <select class="form-select" aria-label="Default select example" name="work_type"
                                             id="workTypeSelect" disabled>
                                         <option value="" selected>Выберите вид работы из базы</option>
                                         {% for wt in work_types %}
-                                        <option value="{{wt}}">{{wt}}</option>
+                                        <option value="{{ wt }}">{{ wt }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-
                                 <div class="mb-3">
                                     <select class="form-select" aria-label="Default select example" name="task_num"
                                             id="taskNumSelect" disabled>
                                         <option value="" selected>Выберите номер задания из базы</option>
                                         {% for tn in task_nums %}
-                                        <option value="{{tn}}">{{tn}}</option>
+                                        <option value="{{ tn }}">{{ tn }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-
-                                <i>
-                                    P.S. Если поля не выбраны будет реализован поиск по всей
-                                    базе
-                                </i>
-
-                                <button type="submit" class="btn btn-info" style="width: 100%">
-                                    Сравнить
-                                </button>
+                                <i>P.S. Если поля не выбраны, будет реализован поиск по всей базе</i>
+                                <button type="submit" class="btn btn-info w-100">Сравнить</button>
                             </div>
                         </div>
                     </div>
-
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="headingThree">
                             <button
@@ -82,7 +71,8 @@
                                     data-bs-toggle="collapse"
                                     data-bs-target="#collapseThree"
                                     aria-expanded="false"
-                                    aria-controls="collapseThree">
+                                    aria-controls="collapseThree"
+                            >
                                 Результат
                             </button>
                         </h2>
@@ -90,11 +80,13 @@
                                 id="collapseThree"
                                 class="accordion-collapse collapse"
                                 aria-labelledby="headingThree"
-                                data-bs-parent="#accordionExample">
+                        >
                             <div class="accordion-body">
-                                <div id="results">
+                                <div id="results" class="results-container">
                                     {% for result in results %}
-                                    <p>{{ result }}</p>
+                                    <div class="result-card animate__animated animate__fadeIn">
+                                        <p>{{ result }}</p>
+                                    </div>
                                     {% endfor %}
                                 </div>
                             </div>
@@ -105,7 +97,7 @@
         </div>
     </div>
 </div>
-{% block scripts %}
+{% block additional_scripts %}
 <script src="{{ url_for('web', path='js/index.js') }}"></script>
 {% endblock %}
 {% endblock %}

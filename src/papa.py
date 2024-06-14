@@ -181,13 +181,12 @@ class PAPA:
         reports = []
         results = []
         dst_names = []
-        similar_proc = []
 
         (article, author, document_name, buf,
          tokens, token_string, fingerprint) = self.process_tokens(file_name, file_content)
 
         if [article, author, document_name, buf, tokens,
-            token_string, fingerprint] == [None, None, None, None, None, None, None]:
+                token_string, fingerprint] == [None, None, None, None, None, None, None]:
             return ['Имя файла не верно!']
 
         new_hash_fingerprints = list(x[0] for x in fingerprint)
@@ -218,11 +217,8 @@ class PAPA:
             return ['Совпадений не было найдено!']
 
         for hit in result.scan():
-            if hit.author == author:
-                continue
-
-            if hit.document_name == document_name:
-                continue
+            if hit.author == author or hit.document_name == document_name:
+                return ['Вы сравниваете работы одного и того же автора!']
 
             a = fuzz.ratio(token_string, hit.token_string)
             old_hash_fingerprints = list(x[0] for x in hit.fingerprint)
@@ -238,20 +234,17 @@ class PAPA:
 
         for item in reports[:5]:
             results.append(
-                f'Сходство  {document_name} с документом {item[3]} '
+                f'Сходство \"{document_name}\" с документом \"{item[3]}\" '
                 f'по Левенштейну - {item[0]} %, по отпечаткам -  {item[1]} %.')
             tr = print_report(item[2], document_name, item[3])
 
             if tr is not None:
                 results.extend(tr)
                 dst_names.append(item[3])
-                similar_proc.append(f'{item[0]}%/{item[1]}%')
 
         return {
             'diff': results,
-            'dst_code': [r[-1] for r in reports[:5]],
-            'dst_name': dst_names,
-            'sims': similar_proc
+            'dst_name': dst_names
         }
 
     def get_field_values(self, field: str) -> List[str]:

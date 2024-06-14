@@ -22,3 +22,34 @@ document.getElementById('workTypeSelect').addEventListener('change', function ()
         taskNumSelect.value = "";
     }
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const results = document.querySelectorAll('.result-card');
+    results.forEach((result, index) => {
+        result.style.animationDelay = `${index * 0.1}s`;
+        result.classList.add('animate__animated', 'animate__fadeIn');
+    });
+});
+
+document.querySelectorAll('.accordion-button').forEach(button => {
+    button.addEventListener('click', function () {
+        const currentlyActive = document.querySelector('.accordion-button:not(.collapsed)');
+        if (currentlyActive && currentlyActive !== this) {
+            currentlyActive.classList.add('collapsed');
+            currentlyActive.nextElementSibling.classList.remove('show');
+        }
+    });
+});
+
+document.getElementById('formFile').addEventListener('change', function () {
+    var fileLabel = document.getElementById('fileLabel');
+    if (this.files && this.files.length > 0) {
+        fileLabel.textContent = this.files[0].name;
+        fileLabel.classList.remove('btn-info');
+        fileLabel.classList.add('btn-primary');
+    } else {
+        fileLabel.textContent = "Загрузите ваш файл";
+        fileLabel.classList.remove('btn-primary');
+        fileLabel.classList.add('btn-info');
+    }
+});

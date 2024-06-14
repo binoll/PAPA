@@ -134,15 +134,10 @@ async def papa(file: UploadFile = File(...),
         results = model.papa(file_content.decode('utf-8'), filename, src_filename)
 
         if isinstance(results, dict):
-            if len(results['diff']) != 0:
-                results = [
-                    f"Название: {results['dst_name']}",
-                    f"Код: {results['dst_code']}",
-                    f"Различия: {results['diff']}",
-                    f"Сходства: {results['sims']}"
-                ]
-            else:
-                results = None
+            results = [
+                f"Документ \"{file.filename}\" похож на {results['dst_name'][0]}",
+                f"{results['diff'][0]}",
+            ]
 
         results_state.set_results(results or ['Пока пусто...'])
         return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
