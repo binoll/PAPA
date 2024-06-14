@@ -28,7 +28,7 @@ class Article(Document):
     text = Text()
     tokens = Text()
     token_string = Text()
-    fingerprints = Text()
+    fingerprint = Text()
 
     class Index:
         """
@@ -136,7 +136,7 @@ class PAPA:
         article.text = file_content
         article.tokens = tokens
         article.token_string = token_string
-        article.fingerprints = fingerprint
+        article.fingerprint = fingerprint
 
         return [article, author, document_name, buf, tokens, token_string, fingerprint]
 
@@ -187,8 +187,8 @@ class PAPA:
          tokens, token_string, fingerprint) = self.process_tokens(file_name, file_content)
 
         if [article, author, document_name, buf, tokens,
-                token_string, fingerprint] == [None, None, None, None, None, None, None]:
-            return ['File name is incorrect!']
+            token_string, fingerprint] == [None, None, None, None, None, None, None]:
+            return ['Имя файла не верно!']
 
         new_hash_fingerprints = list(x[0] for x in fingerprint)
 
@@ -209,13 +209,13 @@ class PAPA:
                           .query('match', work_type=buf[1])
                           .query('match', task_num=buf[2]))
             else:
-                return ['Incorrect source!']
+                return ['Неправильный формат файла!']
 
         self.es.indices.refresh(index=NAME_IN)
         response = result.execute()
 
         if response.hits.total.value == 0:
-            return ['ES have no docs to compare!']
+            return ['Совпадений не было найдено!']
 
         for hit in result.scan():
             if hit.author == author:

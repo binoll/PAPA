@@ -1,18 +1,18 @@
-from typing import Optional
+from typing import Optional, List
 
 import uvicorn
-from fastapi import FastAPI, Request, File, UploadFile, Form, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException, Depends
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette import status
-from starlette.responses import RedirectResponse
 from werkzeug.utils import secure_filename
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from src import mpi, papa
 from loguru import logger
+
+from src.models import ResultsState
 
 HOST = '127.0.0.1'
 PORT = 9200
@@ -27,25 +27,31 @@ app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
 
+results_store = []
+
 with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
     model.create_index()
 
+results_state = ResultsState()
+
 
 @app.get('/')
-async def home(request: Request, results=None) -> templates.TemplateResponse:
-    if results is None:
-        results = ['Пока пусто...']
-
+async def home(request: Request, results: List[str] = Depends(results_state.get_results)) -> templates.TemplateResponse:
     try:
+        if not results:
+            results = ['Пока пусто...']
+
         subjects = model.get_field_values('subject')
         work_types = model.get_field_values('work_type')
         task_nums = model.get_field_values('task_num')
 
         return templates.TemplateResponse(
             'index.html', {
-                'request': request, 'subjects': subjects,
-                'work_types': work_types, 'task_nums': task_nums,
+                'request': request,
+                'subjects': subjects,
+                'work_types': work_types,
+                'task_nums': task_nums,
                 'results': results
             }
         )
@@ -92,11 +98,14 @@ async def add_document(file: UploadFile = File(...)):
             content={'message': f'Файл \"{filename}\" не загружен! Неправильный формат файла!'}
         )
     except Exception as e:
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={'message': str(e)})
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'message': str(e)}
+        )
 
 
 @app.post('/papa')
-async def papa(request: Request, file: UploadFile = File(...),
+async def papa(file: UploadFile = File(...),
                subject: Optional[str] = Form(None),
                work_type: Optional[str] = Form(None),
                task_num: Optional[str] = Form(None)):
@@ -113,10 +122,6 @@ async def papa(request: Request, file: UploadFile = File(...),
                 content={'message': 'Пустое имя файла!'}
             )
 
-        subjects = model.get_field_values('subject')
-        work_types = model.get_field_values('work_type')
-        task_nums = model.get_field_values('task_num')
-
         file_content = await file.read()
         filename = secure_filename(file.filename)
 
@@ -128,23 +133,23 @@ async def papa(request: Request, file: UploadFile = File(...),
 
         results = model.papa(file_content.decode('utf-8'), filename, src_filename)
 
-        if len(results) == 1:
-            results = results[0]
-        elif len(results) > 1 and len(results['diff']) == 0:
-            results = None
-        else:
-            results = (results['dst_name'] + ' ' + results['dst_code'] +
-                       ' ' + results['diff'] + ' ' + results['sims'])
+        if isinstance(results, dict):
+            if len(results['diff']) != 0:
+                results = [
+                    f"Название: {results['dst_name']}",
+                    f"Код: {results['dst_code']}",
+                    f"Различия: {results['diff']}",
+                    f"Сходства: {results['sims']}"
+                ]
+            else:
+                results = None
 
-        return templates.TemplateResponse(
-            'index.html', {
-                'request': request, 'subjects': subjects,
-                'work_types': work_types, 'task_nums': task_nums,
-                'results': results
-            }
-        )
-    except Exception:
-        return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
+        results_state.set_results(results or ['Пока пусто...'])
+        return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
+
+    except Exception as e:
+        results_state.set_results([str(f'Error: {e}')])
+        return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
 
 
 if __name__ == '__main__':

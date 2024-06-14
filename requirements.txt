@@ -27,3 +27,4 @@ loguru
 jose
 passlib
 jwt
+sqlalchemy
