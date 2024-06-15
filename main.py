@@ -1,6 +1,7 @@
-from typing import Optional, List
-
 import uvicorn
+
+from typing import Optional, List
+from pathlib import Path
 from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -67,35 +68,39 @@ async def add_file_page(request: Request):
     return templates.TemplateResponse('add.html', {'request': request})
 
 
-@app.post('/add_file')
-async def add_document(file: UploadFile = File(...)):
+@app.post('/add_files')
+async def add_files(files: List[UploadFile] = File(...)):
+    filenames_failed = []
+
     try:
-        if not file:
+        if not files:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={'message': 'Файл не загружен!'}
+                content={'message': 'Файлы не загружены!'}
             )
 
-        if file.filename == '':
+        for file in files:
+            if file.filename == '':
+                continue
+
+            filename = Path(file.filename).name
+            file_content = await file.read()
+            result = model.add(filename, file_content.decode('utf-8'))
+
+            if not result:
+                filenames_failed.append(filename)
+
+        if len(filenames_failed) != 0:
+            filenames_failed_str = ', '.join(filenames_failed)
+
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={'message': 'Пустое имя файла!'}
-            )
-
-        filename = secure_filename(file.filename)
-        file_content = await file.read()
-
-        result = model.add(filename, file_content.decode('utf-8'))
-
-        if result:
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={'message': f'Файл \"{filename}\" загружен!'}
+                content={'message': f'Файлы \"{filenames_failed_str}\" не загружены! Неправильный формат файла!'}
             )
 
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={'message': f'Файл \"{filename}\" не загружен! Неправильный формат файла!'}
+            status_code=status.HTTP_200_OK,
+            content={'message': 'Все файлы успешно загружены!'}
         )
     except Exception as e:
         return JSONResponse(

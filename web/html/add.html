@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block headerName %}PAPA | Добавление файла{% endblock %}
+{% block headerName %}PAPA | Добавление файлов{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,10 +8,11 @@
         <div class="col-md-6">
             <form id="uploadForm">
                 <div class="mb-3">
-                    <label for="formFile" class="form-label">Выберите ваш файл</label>
-                    <input class="form-control" type="file" id="formFile" name="file" required>
+                    <label for="formDirectory" class="form-label">Выберите вашу директорию</label>
+                    <input class="form-control" type="file" id="formDirectory" name="files" webkitdirectory directory
+                           multiple required>
                 </div>
-                <button type="submit" class="btn btn-info w-100">Добавить файл</button>
+                <button type="submit" class="btn btn-info w-100">Добавить файлы</button>
             </form>
         </div>
     </div>
@@ -19,5 +20,5 @@
 {% endblock %}
 
 {% block additional_scripts %}
-<script src="{{ url_for('web', path='js/upload.js') }}"></script>
+<script src="{{ url_for('web', path='js/add.js') }}"></script>
 {% endblock %}
