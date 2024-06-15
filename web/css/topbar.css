@@ -1,0 +1,40 @@
+.navbar-nav .nav-link {
+    transition: background-color 0.3s, color 0.3s, transform 0.3s;
+    padding: 8px 15px;
+    border-radius: 5px;
+    color: black !important;
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: #e9ecef;
+    transform: scale(1.05);
+    color: black !important;
+}
+
+.navbar-nav .nav-link.active {
+    background-color: #007bff;
+    color: white !important;
+}
+
+.navbar-nav .nav-link:not(.active) {
+    color: black !important;
+}
+
+.navbar-brand img {
+    transition: transform 0.3s;
+}
+
+.navbar-brand img:hover {
+    transform: rotate(360deg);
+}
+
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

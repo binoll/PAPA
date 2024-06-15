@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
+
 {% block headerName %}PAPA | Основная страница{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('web', path='css/index.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <div class="container mt-5 mb-5">
     <div class="row justify-content-center">
@@ -26,10 +32,7 @@
                         >
                             <div class="accordion-body">
                                 <div class="mb-3 text-center">
-                                    <label for="formFile" class="form-label btn btn-info" id="fileLabel">Загрузите ваш
-                                        файл</label>
-                                    <input class="form-control" type="file" id="formFile" name="file"
-                                           style="display: none;"/>
+                                    <input class="form-control" type="file" id="formFile" name="file" required>
                                 </div>
                                 <div class="mb-3">
                                     <select class="form-select" aria-label="Default select example" name="subject"
@@ -97,7 +100,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
 {% block additional_scripts %}
 <script src="{{ url_for('web', path='js/index.js') }}"></script>
-{% endblock %}
 {% endblock %}

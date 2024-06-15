@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const results = document.querySelectorAll('.result-card');
     results.forEach((result, index) => {
         result.style.animationDelay = `${index * 0.1}s`;
-        result.classList.add('animate__animated', 'animate__fadeIn');
+        result.classList.add('animate__animated', 'animate__fadeInUp');
     });
 });
 
@@ -52,4 +52,13 @@ document.getElementById('formFile').addEventListener('change', function () {
         fileLabel.classList.remove('btn-primary');
         fileLabel.classList.add('btn-info');
     }
+});
+
+document.querySelector('form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const newResult = document.createElement('div');
+    newResult.classList.add('result-card', 'animate__animated', 'animate__fadeInUp');
+    newResult.style.animationDelay = '0s';
+    newResult.innerHTML = '<p>Новый результат</p>';
+    document.getElementById('results').appendChild(newResult);
 });
