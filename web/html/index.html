@@ -86,11 +86,28 @@
                         >
                             <div class="accordion-body">
                                 <div id="results" class="results-container">
+                                    {% if results|length == 2 %}
+                                    <table class="result-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Файлы</th>
+                                            <th>Результат</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr>
+                                            <td>{{ results.0 }}</td>
+                                            <td>{{ results.1 }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                    {% else %}
                                     {% for result in results %}
                                     <div class="result-card animate__animated animate__fadeIn">
                                         <p>{{ result }}</p>
                                     </div>
                                     {% endfor %}
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

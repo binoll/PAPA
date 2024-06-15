@@ -217,14 +217,15 @@ class PAPA:
             return ['Совпадений не было найдено!']
 
         for hit in result.scan():
-            if hit.author == author or hit.document_name == document_name:
-                return ['Вы сравниваете работы одного и того же автора!']
+            if hit.author == author and hit.document_name == document_name:
+                return ['Этот документ уже есть в базе!']
 
             a = fuzz.ratio(token_string, hit.token_string)
             old_hash_fingerprints = list(x[0] for x in hit.fingerprint)
             intersection = list(set(new_hash_fingerprints).intersection(set(old_hash_fingerprints)))
             token_distance = len(intersection) / max(len(set(old_hash_fingerprints)),
                                                      len(set(new_hash_fingerprints))) * 100
+            token_distance = round(token_distance, 2)
             reports.append((a, token_distance,
                             report(fingerprint, hit.fingerprint),
                             hit.document_name,
@@ -234,8 +235,7 @@ class PAPA:
 
         for item in reports[:5]:
             results.append(
-                f'Сходство \"{document_name}\" с документом \"{item[3]}\" '
-                f'по Левенштейну - {item[0]} %, по отпечаткам -  {item[1]} %.')
+                f'Сходство по Левенштейну - {item[0]} %, по отпечаткам -  {item[1]} %.')
             tr = print_report(item[2], document_name, item[3])
 
             if tr is not None:

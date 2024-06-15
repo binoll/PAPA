@@ -28,8 +28,6 @@ app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
 
-results_store = []
-
 with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
     model.create_index()
@@ -140,8 +138,8 @@ async def papa(file: UploadFile = File(...),
 
         if isinstance(results, dict):
             results = [
-                f"Документ \"{file.filename}\" похож на {results['dst_name'][0]}",
-                f"{results['diff'][0]}",
+                f"Файл \"{file.filename}\" похож на \"{results['dst_name'][0]}\"",
+                f"{results['diff'][0]}"
             ]
 
         results_state.set_results(results or ['Пока пусто...'])
