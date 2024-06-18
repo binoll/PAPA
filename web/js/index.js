@@ -53,12 +53,3 @@ document.getElementById('formFile').addEventListener('change', function () {
         fileLabel.classList.add('btn-info');
     }
 });
-
-document.querySelector('form').addEventListener('submit', function (event) {
-    event.preventDefault();
-    const newResult = document.createElement('div');
-    newResult.classList.add('result-card', 'animate__animated', 'animate__fadeInUp');
-    newResult.style.animationDelay = '0s';
-    newResult.innerHTML = '<p>Новый результат</p>';
-    document.getElementById('results').appendChild(newResult);
-});
