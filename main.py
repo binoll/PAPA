@@ -2,41 +2,69 @@ import uvicorn
 
 from typing import Optional, List
 from pathlib import Path
-from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException, Depends
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import File, UploadFile, Form, HTTPException, FastAPI, Request, status, Depends
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette import status
 from werkzeug.utils import secure_filename
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
-from src import mpi, papa
+from fastapi_users import FastAPIUsers
+from fastapi.responses import JSONResponse
 from loguru import logger
 
-from src.models import ResultsState
+from auth.auth import auth_backend
+from auth.database import User
+from auth.manager import get_user_manager
+from auth.schemas import UserRead, UserCreate
+
+from src import mpi, papa
+from result import ResultsState
 
 HOST = '127.0.0.1'
 PORT = 9200
 TOKENS_JSON_PATH = 'src/tokens/mpi.json'
+RESULT_STATE = ResultsState()
 
 es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
 
-logger = logger.opt(colors=True)
-
 app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
+logger = logger.opt(colors=True)
+
+users = FastAPIUsers[User, int](
+    get_user_manager,
+    [auth_backend],
+)
+app.include_router(
+    users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
+app.include_router(
+    users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
+current_user = users.current_user()
 
 with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
     model.create_index()
 
-results_state = ResultsState()
+
+@app.get("/login")
+def unprotected_route():
+    return templates.TemplateResponse(
+        'login.html', {}
+    )
 
 
 @app.get('/')
-async def home(request: Request, results: List[str] = Depends(results_state.get_results)) -> templates.TemplateResponse:
+async def home(request: Request, user: User = Depends(current_user),
+               results: List[str] = Depends(RESULT_STATE.get_results)) -> templates.TemplateResponse:
     try:
         if not results:
             results = ['Пока пусто...']
@@ -62,12 +90,12 @@ async def home(request: Request, results: List[str] = Depends(results_state.get_
 
 
 @app.get('/add')
-async def add_file_page(request: Request):
+async def add_file_page(request: Request, user: User = Depends(current_user)):
     return templates.TemplateResponse('add.html', {'request': request})
 
 
 @app.post('/add_files')
-async def add_files(files: List[UploadFile] = File(...)):
+async def add_files(user: User = Depends(current_user), files: List[UploadFile] = File(...)):
     filenames_failed = []
 
     try:
@@ -108,7 +136,7 @@ async def add_files(files: List[UploadFile] = File(...)):
 
 
 @app.post('/papa')
-async def papa(file: UploadFile = File(...),
+async def papa(user: User = Depends(current_user), file: UploadFile = File(...),
                subject: Optional[str] = Form(None),
                work_type: Optional[str] = Form(None),
                task_num: Optional[str] = Form(None)):
@@ -142,11 +170,11 @@ async def papa(file: UploadFile = File(...),
                 f"{results['diff'][0]}"
             ]
 
-        results_state.set_results(results or ['Пока пусто...'])
+        RESULT_STATE.set_results(results or ['Пока пусто...'])
         return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
 
     except Exception as e:
-        results_state.set_results([str(f'Error: {e}')])
+        RESULT_STATE.set_results([str(f'Error: {e}')])
         return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
 
 

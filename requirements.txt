@@ -27,4 +27,6 @@ loguru
 jose
 passlib
 jwt
-sqlalchemy
+fastapi[all]
+fastapi-users[sqlalchemy]
+asyncpg
