@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>PAPA | Login</title>
+    <title>PAPA | Register</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="PAPA - File Comparison Tool">
@@ -14,26 +14,27 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid justify-content-center">
         <a class="navbar-brand" href="/login">
-            <img src="{{ url_for('web', path='img/father.png') }}" alt="PAPA Logo" width="100" height="100"
-                 class="d-inline-block align-text-top">
+            <img src="{{ url_for('web', path='img/father.png') }}" alt="PAPA Logo" width="50" height="50" class="d-inline-block align-text-top">
+            PAPA
         </a>
     </div>
 </nav>
 <main class="container my-5">
     <div class="container text-center">
-        <h1 class="mt-3 mb-4">Login</h1>
-        <form action="/token" method="post">
+        <h1 class="mt-3 mb-4">Register</h1>
+        <form action="/register" method="post">
             <div class="form-group">
-                <input type="text" class="form-control mx-auto" id="username" name="username" placeholder="Username"
-                       required>
+                <input type="text" class="form-control mx-auto" id="username" name="username" placeholder="Username" required>
             </div>
             <div class="form-group">
-                <input type="password" class="form-control mx-auto" id="password" name="password" placeholder="Password"
-                       required>
+                <input type="password" class="form-control mx-auto" id="password" name="password" placeholder="Password" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Login</button>
+            <div class="form-group">
+                <input type="password" class="form-control mx-auto" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
         </form>
-        <a href="/register" class="btn btn-secondary btn-block mt-3">Register</a>
+        <a href="/login" class="btn btn-secondary btn-block mt-3">Back to Login</a>
     </div>
 </main>
 <footer class="text-center mt-auto py-3 bg-light">

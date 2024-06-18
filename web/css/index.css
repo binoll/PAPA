@@ -23,13 +23,13 @@ main {
 .result-table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid #000; /* Добавляем общую рамку для таблицы */
+    border: 1px solid #000;
 }
 
 .result-table th,
 .result-table td {
-    border: 1px solid #000; /* Добавляем рамку для каждой ячейки */
-    padding: 8px; /* Увеличиваем отступы для лучшего визуального разделения */
+    border: 1px solid #000;
+    padding: 8px;
     text-align: center;
     white-space: nowrap;
 }

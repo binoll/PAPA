@@ -2,15 +2,21 @@
     margin-bottom: 20px;
 }
 
-.btn-primary {
+.btn-primary, .btn-secondary {
     width: 200px;
     margin-top: 20px;
 }
 
 .form-control {
-    width: 300px;
+    width: 250px;
 }
 
 .main-container {
     text-align: center;
+}
+
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
 }
