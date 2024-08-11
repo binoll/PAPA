@@ -21,7 +21,7 @@ from auth.schemas import UserRead, UserCreate
 from src import mpi, papa
 from result import ResultsState
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 9200
 TOKENS_JSON_PATH = 'src/tokens/mpi.json'
 RESULT_STATE = ResultsState()
