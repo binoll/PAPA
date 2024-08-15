@@ -6,7 +6,6 @@ from typing import List, Callable, Union, Any
 from fuzzywuzzy import fuzz
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Document, Text, Keyword
-
 from src.fingerprint import fingerprints, report, print_report
 
 K = 10
@@ -186,7 +185,7 @@ class PAPA:
          tokens, token_string, fingerprint) = self.process_tokens(file_name, file_content)
 
         if [article, author, document_name, buf, tokens,
-                token_string, fingerprint] == [None, None, None, None, None, None, None]:
+            token_string, fingerprint] == [None, None, None, None, None, None, None]:
             return ['Имя файла не верно!']
 
         new_hash_fingerprints = list(x[0] for x in fingerprint)

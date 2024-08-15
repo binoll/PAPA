@@ -1,7 +1,15 @@
+"""
+This module for save result of searches.
+"""
+
 from typing import List
 
 
 class ResultsState:
+    """
+    Class for save result of searches.
+    """
+
     def __init__(self):
         self.results = []
 

@@ -2,9 +2,9 @@
 This module provides functions to generate fingerprints.
 """
 
-from nltk import ngrams
 import hashlib
 
+from nltk import ngrams
 from typing import List, Tuple
 
 

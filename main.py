@@ -9,63 +9,39 @@ from fastapi.templating import Jinja2Templates
 from werkzeug.utils import secure_filename
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
-from fastapi_users import FastAPIUsers
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from auth.auth import auth_backend
-from auth.database import User
-from auth.manager import get_user_manager
-from auth.schemas import UserRead, UserCreate
-
 from src import mpi, papa
-from result import ResultsState
+from src.result import ResultsState
 
-HOST = '0.0.0.0'
-PORT = 9200
+HOST = '127.0.0.1'
+ES_PORT = 9200
+UVICORN_PORT = 8000
 TOKENS_JSON_PATH = 'src/tokens/mpi.json'
 RESULT_STATE = ResultsState()
 
-es = Elasticsearch([{'host': HOST, 'port': PORT, 'scheme': 'http'}])
-connections.create_connection(hosts=[{'host': HOST, 'port': PORT, 'scheme': 'http'}])
+es = Elasticsearch([{'host': HOST, 'port': ES_PORT, 'scheme': 'http'}])
+connections.create_connection(hosts=[{'host': HOST, 'port': ES_PORT, 'scheme': 'http'}])
 
 app = FastAPI()
 templates = Jinja2Templates(directory='web/html')
 app.mount('/web', StaticFiles(directory='web'), name='web')
 logger = logger.opt(colors=True)
 
-users = FastAPIUsers[User, int](
-    get_user_manager,
-    [auth_backend],
-)
-
-app.include_router(
-    users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
-    tags=["auth"],
-)
-
-app.include_router(
-    users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
-    tags=["auth"],
-)
-
-current_user = users.current_user()
-
 with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
     model = papa.PAPA(es, mpi.tokenizer, tokens.read())
     model.create_index()
 
 
-@app.get("/login")
+@app.get('/login')
 async def login(request: Request):
     return templates.TemplateResponse(
         'login.html', {'request': request}
     )
 
 
-@app.get("/register")
+@app.get('/register')
 def register_route(request: Request):
     return templates.TemplateResponse(
         'register.html', {'request': request}
@@ -73,8 +49,9 @@ def register_route(request: Request):
 
 
 @app.get('/')
-async def home(request: Request, user: User = Depends(current_user),
-               results: List[str] = Depends(RESULT_STATE.get_results)) -> templates.TemplateResponse:
+async def home(request: Request,
+               results: List[str] = Depends(RESULT_STATE.get_results)) \
+        -> templates.TemplateResponse:
     try:
         if not results:
             results = ['Пока пусто...']
@@ -84,7 +61,7 @@ async def home(request: Request, user: User = Depends(current_user),
         task_nums = model.get_field_values('task_num')
 
         return templates.TemplateResponse(
-            'index.html', {
+            'main.html', {
                 'request': request,
                 'subjects': subjects,
                 'work_types': work_types,
@@ -100,12 +77,12 @@ async def home(request: Request, user: User = Depends(current_user),
 
 
 @app.get('/add')
-async def add_file_page(request: Request, user: User = Depends(current_user)):
+async def add_file_page(request: Request):
     return templates.TemplateResponse('add.html', {'request': request})
 
 
 @app.post('/add_files')
-async def add_files(user: User = Depends(current_user), files: List[UploadFile] = File(...)):
+async def add_files(files: List[UploadFile] = File(...)):
     filenames_failed = []
 
     try:
@@ -131,7 +108,7 @@ async def add_files(user: User = Depends(current_user), files: List[UploadFile] 
 
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={'message': f'Файлы \"{filenames_failed_str}\" не загружены! Неправильный формат файла!'}
+                content={'message': f'Файлы \'{filenames_failed_str}\' не загружены! Неправильный формат файла!'}
             )
 
         return JSONResponse(
@@ -146,7 +123,7 @@ async def add_files(user: User = Depends(current_user), files: List[UploadFile] 
 
 
 @app.post('/papa')
-async def papa(user: User = Depends(current_user), file: UploadFile = File(...),
+async def papa(file: UploadFile = File(...),
                subject: Optional[str] = Form(None),
                work_type: Optional[str] = Form(None),
                task_num: Optional[str] = Form(None)):
@@ -176,8 +153,8 @@ async def papa(user: User = Depends(current_user), file: UploadFile = File(...),
 
         if isinstance(results, dict):
             results = [
-                f"Файл \"{file.filename}\" похож на \"{results['dst_name'][0]}\"",
-                f"{results['diff'][0]}"
+                f'Файл \'{file.filename}\' похож на \'{results["dst_name"][0]}\'',
+                f'{results["diff"][0]}'
             ]
 
         RESULT_STATE.set_results(results or ['Пока пусто...'])
@@ -189,4 +166,4 @@ async def papa(user: User = Depends(current_user), file: UploadFile = File(...),
 
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port=8000)
+    uvicorn.run(app, host=HOST, port=UVICORN_PORT)
