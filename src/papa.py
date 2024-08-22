@@ -6,7 +6,7 @@ from typing import List, Callable, Union, Any
 from fuzzywuzzy import fuzz
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Document, Text, Keyword
-from src.fingerprint import fingerprints, report, print_report
+from src.fingerprint import fingerprints, report, create_report
 
 K = 10
 T = 13
@@ -235,10 +235,10 @@ class PAPA:
         for item in reports[:5]:
             results.append(
                 f'Сходство по Левенштейну - {item[0]} %, по отпечаткам -  {item[1]} %.')
-            tr = print_report(item[2], document_name, item[3])
+            tr = create_report(item[2], document_name, item[3])
 
             if tr is not None:
-                results.extend(tr)
+                # results.extend(tr)
                 dst_names.append(item[3])
 
         return {

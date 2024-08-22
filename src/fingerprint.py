@@ -116,7 +116,7 @@ def report(data1: List[Tuple[int, int, int]], data2: List[Tuple[int, int, int]])
     return res
 
 
-def print_report(report_list: str | List, doc1: str, doc2: str) -> List[str]:
+def create_report(report_list: str | List, doc1: str, doc2: str) -> List[str]:
     """
     Generate a human-readable report based on fingerprint matches between two documents.
 
@@ -163,8 +163,8 @@ def print_report(report_list: str | List, doc1: str, doc2: str) -> List[str]:
 
     for item in buf:
         results.append(
-            f'Strings from document {doc1} with line numbers {item[0][0]} - '
-            f'{item[0][1]} are similar to strings {item[1]} from document {doc2}'
+            f'Строки документа "{doc1}" с номерами {item[0][0]} - '
+            f'{item[0][1]} похожи на строки {item[1]} из "{doc2}"'
         )
 
     return results

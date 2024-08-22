@@ -2,7 +2,7 @@ import uvicorn
 
 from typing import Optional, List
 from pathlib import Path
-from fastapi import File, UploadFile, Form, HTTPException, FastAPI, Request, status, Depends
+from fastapi import File, UploadFile, Form, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,9 +11,9 @@ from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from fastapi.responses import JSONResponse
 from loguru import logger
-
 from src import mpi, papa
 from src.result import ResultsState
+from fastapi import Depends, FastAPI
 
 HOST = '127.0.0.1'
 ES_PORT = 9200
@@ -42,7 +42,7 @@ async def login(request: Request):
 
 
 @app.get('/register')
-def register_route(request: Request):
+async def register(request: Request):
     return templates.TemplateResponse(
         'register.html', {'request': request}
     )
@@ -158,6 +158,7 @@ async def papa(file: UploadFile = File(...),
             ]
 
         RESULT_STATE.set_results(results or ['Пока пусто...'])
+
         return RedirectResponse(url=app.url_path_for('home'), status_code=status.HTTP_303_SEE_OTHER)
 
     except Exception as e:
