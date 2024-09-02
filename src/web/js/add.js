@@ -16,7 +16,7 @@ $(document).ready(function () {
 
         $.ajax({
             type: "POST",
-            url: `${location.protocol}//${location.host}/add_files`,
+            url: `${location.protocol}//${location.host}/add`,
             data: formData,
             cache: false,
             contentType: false,

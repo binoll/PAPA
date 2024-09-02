@@ -6,7 +6,7 @@ from typing import List, Callable, Union, Any
 from fuzzywuzzy import fuzz
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Document, Text, Keyword
-from src.fingerprint import fingerprints, report, create_report
+from src.app.fingerprint import fingerprints, report, create_report
 
 K = 10
 T = 13

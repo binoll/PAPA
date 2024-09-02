@@ -1,5 +1,7 @@
 elasticsearch
 elasticsearch-dsl
+fastapi[all]
+fastapi-users[sqlalchemy]
 werkzeug
 uvicorn
 fuzzywuzzy
@@ -11,7 +13,10 @@ regex
 urllib3
 Werkzeug
 loguru
-fastapi[all]
-fastapi-users[sqlalchemy]
 asyncpg
 SQLAlchemy
+aiosqlite
+starlette
+passlib
+bcrypt
+pydantic

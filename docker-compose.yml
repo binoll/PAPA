@@ -1,55 +1,30 @@
-version: '3'
-
 services:
   elasticsearch:
     image: elasticsearch:8.10.3
-    container_name: es717
+    container_name: es810
     restart: always
     volumes:
-      - elastic7-data:/usr/share/elasticsearch/data
-    environment:
-      - "discovery.type=single-node"
+      - elastic8-data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
     networks:
       - es_net
 
-  kibana7:
-    image: kibana:8.12.0
-    container_name: kibana
-    environment:
-      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
-    networks:
-      - es_net
-    ports:
-      - "5601:5601"
-    depends_on:
-      - elasticsearch
-
   papa:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: papa_web
+    container_name: web
     restart: always
     links:
       - elasticsearch
-    depends_on:
-      - kibana7
     ports:
       - "732:8000"
-    environment:
-      - "HOST=elasticsearch"
-      - "PORT=9200"
-      - "NAME_IN=papa"
-      - "K=10"
-      - "T=13"
-      - "PORT_WEB=8000"
     networks:
       - es_net
 
 volumes:
-  elastic7-data:
+  elastic8-data:
     driver: local
 
 networks:
