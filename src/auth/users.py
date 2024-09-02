@@ -4,8 +4,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_users import BaseUserManager
 from fastapi_users.authentication import (
     AuthenticationBackend,
-    BearerTransport,
     JWTStrategy,
+    CookieTransport,
 )
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,7 @@ from auth.models import User
 from auth.database import get_async_session
 from auth.crypt import hash_password, verify_password
 
-SECRET_KEY = "SECRET"
+SECRET_KEY = 'SECRET'
 
 
 class UserManager(BaseUserManager[User, int]):
@@ -25,6 +25,24 @@ class UserManager(BaseUserManager[User, int]):
         super().__init__(session)
         self.session = session
 
+    def parse_id(self, user_id: str) -> int:
+        try:
+            return int(user_id)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user ID format")
+
+    @staticmethod
+    def get_id(user: User) -> str:
+        return str(user.id)
+
+    async def get(self, id: int) -> Optional[User]:
+        query = select(User).where(User.id == id)
+        result = await self.session.execute(query)
+        user = result.scalars().first()
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return user
+
     async def create_user(self, username: str, password: str) -> User:
         hashed_password = hash_password(password)
         user = User(username=username, hashed_password=hashed_password)
@@ -33,6 +51,7 @@ class UserManager(BaseUserManager[User, int]):
             await self.session.commit()
             return user
         except Exception as e:
+            await self.session.rollback()
             raise e
 
     async def delete_user(self, username: str) -> None:
@@ -47,6 +66,7 @@ class UserManager(BaseUserManager[User, int]):
             else:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         except Exception as e:
+            await self.session.rollback()
             raise e
 
     async def update_password(self, username: str, new_password: str) -> None:
@@ -62,6 +82,7 @@ class UserManager(BaseUserManager[User, int]):
             else:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         except Exception as e:
+            await self.session.rollback()
             raise e
 
     async def authenticate(self, credentials: OAuth2PasswordRequestForm) -> Optional[User]:
@@ -90,13 +111,13 @@ async def get_user_manager(session: AsyncSession = Depends(get_async_session)) -
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=3600)
+    return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=60)
 
 
-bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+cookie_transport = CookieTransport(cookie_name='access_token', cookie_max_age=3600)
 
 auth_backend = AuthenticationBackend(
     name='jwt',
-    transport=bearer_transport,
+    transport=cookie_transport,
     get_strategy=get_jwt_strategy,
 )

@@ -1,7 +1,7 @@
 import uvicorn
-
 from fastapi import FastAPI, Depends, Request, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from elasticsearch import Elasticsearch
@@ -23,19 +23,17 @@ ES_PORT = 9200
 UVICORN_PORT = 8000
 TOKENS_JSON_PATH = 'src/app/tokens/mpi.json'
 RESULT_STATE = ResultsState()
-MODEL = papa.PAPA(es=None, token_function=None, token_file_content=None)
 
 es = Elasticsearch([{'host': HOST, 'port': ES_PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': ES_PORT, 'scheme': 'http'}])
 
+with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
+    MODEL = papa.PAPA(es=es, token_function=mpi.tokenizer, token_file_content=tokens.read())
+    MODEL.create_index()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
-        MODEL.es = es
-        MODEL.token_function = mpi.tokenizer
-        MODEL.token_file_content = tokens.read()
-        MODEL.create_index()
     await create_db_and_tables()
     yield
 
@@ -47,33 +45,38 @@ templates = Jinja2Templates(directory='src/web/html')
 fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 current_active_user = fastapi_users.current_user(active=True)
 
-app.include_router(
-    fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
-)
 
-app.include_router(
-    fastapi_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
-    tags=["auth"],
-)
+@app.post('/login')
+async def login_user(
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        user_manager: UserManager = Depends(get_user_manager)
+):
+    try:
+        user = await user_manager.authenticate(form_data)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
 
-app.include_router(
-    fastapi_users.get_reset_password_router(),
-    prefix="/auth",
-    tags=["auth"],
-)
+        access_token = await auth_backend.get_strategy().write_token(user)
 
-app.include_router(
-    fastapi_users.get_verify_router(UserRead),
-    prefix="/auth",
-    tags=["auth"],
-)
+        response = RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,
+            secure=True,
+            max_age=3600,
+            samesite='lax'
+        )
 
-app.include_router(
-    fastapi_users.get_users_router(UserRead, UserUpdate),
-    prefix="/users",
-    tags=["users"],
-)
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
 
 
 @app.get('/login')
