@@ -8,7 +8,6 @@ from fastapi.templating import Jinja2Templates
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
 from loguru import logger
-from starlette.templating import _TemplateResponse
 from werkzeug.utils import secure_filename
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -49,7 +48,7 @@ fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 current_active_user = fastapi_users.current_user(active=True)
 
 
-async def render_template_page(template_name: str, request: Request, context: dict | None) -> _TemplateResponse:
+async def render_template_page(template_name: str, request: Request, context: dict | None):
     try:
         if context is None:
             context = {}
