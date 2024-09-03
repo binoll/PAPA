@@ -9,18 +9,21 @@ from sqlalchemy.sql.operators import eq
 
 from auth.models import User
 from auth.database import Database
-from auth.crypt import hash_password, verify_password
+from auth.crypt import Crypt
 
 SECRET_KEY = '8q(}@T449mZq*]IbEKcdlL@Yd3/+3_s.$dWq*h[j&CC#52JOOJwPgT=L*QJXzvzBc)1'
+DEFAULT_SUPERUSER_LOGIN = 'admin'
+DEFAULT_SUPERUSER_PASSWORD = 'k732'
 
 
 class UserManager(BaseUserManager[User, int]):
+
     def __init__(self, session: AsyncSession):
         super().__init__(session)
         self.session = session
 
     async def create_user(self, username: str, password: str) -> User:
-        hashed_password = hash_password(password)
+        hashed_password = Crypt.hash_password(password)
         user = User(username=username, hashed_password=hashed_password)
 
         try:
@@ -47,7 +50,7 @@ class UserManager(BaseUserManager[User, int]):
             raise e
 
     async def update_password(self, username: str, new_password: str) -> None:
-        hashed_password = hash_password(new_password)
+        hashed_password = Crypt.hash_password(new_password)
         try:
             query = select(User).where(eq(User.username, username))
             result = await self.session.execute(query)
@@ -67,7 +70,7 @@ class UserManager(BaseUserManager[User, int]):
             query = select(User).where(eq(User.username, credentials.username))
             result = await self.session.execute(query)
             user = result.scalars().first()
-            if user and verify_password(credentials.password, user.hashed_password):
+            if user and Crypt.verify_password(credentials.password, user.hashed_password):
                 return user
         except Exception as e:
             raise e
@@ -92,8 +95,8 @@ class UserManager(BaseUserManager[User, int]):
     def get_id(user: User) -> str:
         return str(user.id)
 
-    async def get(self, id: int) -> Optional[User]:
-        query = select(User).where(eq(User.id, id))
+    async def get(self, user_id: int) -> Optional[User]:
+        query = select(User).where(eq(User.id, user_id))
         result = await self.session.execute(query)
         user = result.scalars().first()
         if not user:
@@ -102,7 +105,11 @@ class UserManager(BaseUserManager[User, int]):
 
 
 async def get_user_manager(session: AsyncSession = Depends(Database.get_async_session)) -> UserManager:
-    return UserManager(session)
+    user_manager = UserManager(session)
+
+    if not await user_manager.user_exists(username=DEFAULT_SUPERUSER_LOGIN):
+        await user_manager.create_user(username=DEFAULT_SUPERUSER_LOGIN, password=DEFAULT_SUPERUSER_PASSWORD)
+    return user_manager
 
 
 def get_jwt_strategy() -> JWTStrategy:

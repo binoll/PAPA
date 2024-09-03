@@ -12,11 +12,10 @@ rapidfuzz
 regex
 urllib3
 Werkzeug
-loguru
-asyncpg
 SQLAlchemy
 aiosqlite
 starlette
 passlib
 bcrypt
+loguru
 pydantic

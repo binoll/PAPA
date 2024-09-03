@@ -9,7 +9,7 @@ DATABASE_URL = f'sqlite+aiosqlite:///{DATABASE_DIR}/database.db'
 
 
 class Database:
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(DATABASE_URL)
     async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     @classmethod

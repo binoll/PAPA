@@ -7,6 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
+from loguru import logger
+from starlette.templating import _TemplateResponse
 from werkzeug.utils import secure_filename
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -23,10 +25,10 @@ HOST = '127.0.0.1'
 ES_PORT = 9200
 UVICORN_PORT = 8000
 TOKENS_JSON_PATH = 'src/app/tokens/mpi.json'
-RESULT_STATE = ResultsState()
 
 es = Elasticsearch([{'host': HOST, 'port': ES_PORT, 'scheme': 'http'}])
 connections.create_connection(hosts=[{'host': HOST, 'port': ES_PORT, 'scheme': 'http'}])
+result_state = ResultsState()
 
 with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
     MODEL = papa.PAPA(es=es, token_function=mpi.tokenizer, token_file_content=tokens.read())
@@ -47,6 +49,29 @@ fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 current_active_user = fastapi_users.current_user(active=True)
 
 
+async def render_template_page(template_name: str, request: Request, context: dict | None) -> _TemplateResponse:
+    try:
+        if context is None:
+            context = {}
+
+        context.update({'request': request, 'status': status.HTTP_200_OK})
+        return templates.TemplateResponse(template_name, context)
+    except Exception as e:
+        logger.error(f'Error rendering template {template_name}: {e}')
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Internal Server Error')
+
+
+def set_access_token_cookie(response: RedirectResponse, access_token: str):
+    response.set_cookie(
+        key='access_token',
+        value=access_token,
+        httponly=True,
+        secure=True,
+        max_age=3600,
+        samesite='lax'
+    )
+
+
 @app.post('/login')
 async def login_user(
         form_data: OAuth2PasswordRequestForm = Depends(),
@@ -54,40 +79,33 @@ async def login_user(
 ):
     try:
         user = await user_manager.authenticate(form_data)
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials"
+                detail='Invalid credentials'
             )
 
         access_token = await auth_backend.get_strategy().write_token(user)
-
         response = RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
-        response.set_cookie(
-            key='access_token',
-            value=access_token,
-            httponly=True,
-            secure=True,
-            max_age=3600,
-            samesite='lax'
-        )
+        set_access_token_cookie(response, access_token)
 
         return response
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail='Invalid credentials'
         )
 
 
 @app.get('/login')
 async def login_page(request: Request):
-    return templates.TemplateResponse('login.html', {'request': request, 'status': status.HTTP_200_OK})
+    return await render_template_page('login.html', request, None)
 
 
 @app.get('/register')
 async def register_page(request: Request):
-    return templates.TemplateResponse('register.html', {'request': request, 'status': status.HTTP_200_OK})
+    return await render_template_page('register.html', request, None)
 
 
 @app.post('/register')
@@ -98,18 +116,17 @@ async def register_user(
         confirm_password: str = Form(...),
         user_manager: UserManager = Depends(get_user_manager)
 ):
+    context = {}
+
     if password != confirm_password:
-        return templates.TemplateResponse(
-            'register.html',
-            {'request': request, 'error': 'Passwords do not match!'}
-        )
+        context['error'] = 'Passwords do not match!'
+        return await render_template_page('register.html', request, context)
 
     user_exists = await user_manager.user_exists(username)
+
     if user_exists:
-        return templates.TemplateResponse(
-            'register.html',
-            {'request': request, 'error': 'User already exists!'}
-        )
+        context['error'] = 'User already exists!'
+        return await render_template_page('register.html', request, context)
 
     await user_manager.create_user(username=username, password=password)
     return RedirectResponse(url='/login', status_code=status.HTTP_303_SEE_OTHER)
@@ -117,7 +134,7 @@ async def register_user(
 
 @app.get('/')
 async def home_page(request: Request,
-                    results: List[str] = Depends(RESULT_STATE.get_results),
+                    results: List[str] = Depends(result_state.get_results),
                     user: UserRead = Depends(current_active_user)):
     try:
         if not results:
@@ -127,15 +144,14 @@ async def home_page(request: Request,
         work_types = MODEL.get_field_values('work_type')
         task_nums = MODEL.get_field_values('task_num')
 
-        return templates.TemplateResponse(
-            'main.html', {
-                'request': request,
-                'subjects': subjects,
-                'work_types': work_types,
-                'task_nums': task_nums,
-                'results': results
-            }
-        )
+        context = {
+            'subjects': subjects,
+            'work_types': work_types,
+            'task_nums': task_nums,
+            'results': results
+        }
+
+        return await render_template_page('main.html', request, context)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -144,9 +160,12 @@ async def home_page(request: Request,
 
 
 @app.get('/add')
-async def add_page(request: Request,
-                   user: UserRead = Depends(current_active_user)):
-    return templates.TemplateResponse('add.html', {'request': request})
+async def add_page(
+        request: Request,
+        user: UserRead = Depends(current_active_user)
+):
+    context = {}
+    return await render_template_page('add.html', request, context)
 
 
 @app.post('/add')
@@ -222,16 +241,16 @@ async def papa(file: UploadFile = File(...),
 
         if isinstance(results, dict):
             results = [
-                f'Файл \"{file.filename}\" похож на \"{results["dst_name"][0]}\"',
+                f'Файл \"{file.filename}\" похож на \"{results["dst_name"][0]}\'',
                 f'{results["diff"][0]}'
             ]
 
-        RESULT_STATE.set_results(results or ['Пока пусто...'])
+        result_state.set_results(results or ['Пока пусто...'])
 
         return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
 
     except Exception as e:
-        RESULT_STATE.set_results([f'Error: {e}'])
+        result_state.set_results([f'Error: {e}'])
         return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
 
 
