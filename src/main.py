@@ -71,6 +71,18 @@ def set_access_token_cookie(response: RedirectResponse, access_token: str):
     )
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        return await render_template_page('unauth.html', request, None)
+    return await request.app.default_exception_handler(request, exc)
+
+
+@app.get('/unauthorized')
+async def unauthorized_page(request: Request):
+    return await render_template_page('unauth.html', request, None)
+
+
 @app.post('/login')
 async def login_user(
         form_data: OAuth2PasswordRequestForm = Depends(),

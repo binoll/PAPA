@@ -113,10 +113,10 @@ async def get_user_manager(session: AsyncSession = Depends(Database.get_async_se
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=3600)
+    return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=900)
 
 
-cookie_transport = CookieTransport(cookie_name='access_token', cookie_max_age=3600)
+cookie_transport = CookieTransport(cookie_name='access_token', cookie_max_age=900)
 
 auth_backend = AuthenticationBackend(
     name='jwt',

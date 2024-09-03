@@ -1,0 +1,9 @@
+{% extends 'auth.html' %}
+
+{% block content %}
+<div class="container text-center">
+    <h1 class="mt-5 mb-4">Unauthorized Access</h1>
+    <p>You need to <a href="/login" class="text-primary">login</a> or <a href="/register" class="text-secondary">register</a>
+        to access this page.</p>
+</div>
+{% endblock %}
