@@ -1,4 +1,5 @@
 import uvicorn
+
 from fastapi import FastAPI, Depends, Request, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -10,9 +11,9 @@ from werkzeug.utils import secure_filename
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
-from auth.database import create_db_and_tables
+from auth.database import Database
 from auth.models import User
-from auth.schemas import UserRead, UserUpdate, UserCreate
+from auth.schemas import UserRead
 from auth.users import auth_backend, get_user_manager, UserManager
 from result import ResultsState
 from app import papa, mpi
@@ -34,7 +35,7 @@ with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_db_and_tables()
+    await Database.create_db_and_tables()
     yield
 
 
