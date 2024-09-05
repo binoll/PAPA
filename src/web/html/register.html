@@ -6,20 +6,33 @@
 <div class="container text-center">
     <h1 class="mt-3 mb-4">Регистрация</h1>
     <form action="/register" method="post">
-        <div class="mb-3">
+        <div class="mb-3 position-relative">
             <input type="text" class="form-control mx-auto" id="username" name="username" placeholder="Username"
                    required>
         </div>
-        <div class="mb-3">
+        <div class="mb-3 position-relative">
             <input type="password" class="form-control mx-auto" id="password" name="password" placeholder="Password"
                    required>
+            <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y me-2"
+                    id="toggle-password">
+                <i class="bi bi-eye"></i>
+            </button>
         </div>
-        <div class="mb-3">
+        <div class="mb-3 position-relative">
             <input type="password" class="form-control mx-auto" id="confirm_password" name="confirm_password"
                    placeholder="Confirm password" required>
+            <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y me-2"
+                    id="toggle-confirm-password">
+                <i class="bi bi-eye"></i>
+            </button>
         </div>
         <button type="submit" class="btn btn-primary w-100">Регистрация</button>
     </form>
     <a href="/login" class="btn btn-secondary w-100 mt-3">Вернуться ко входу</a>
 </div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{ url_for('web', path='js/password.js') }}"></script>
 {% endblock %}
