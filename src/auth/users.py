@@ -22,9 +22,9 @@ class UserManager(BaseUserManager[User, int]):
         super().__init__(session)
         self.session = session
 
-    async def create_user(self, username: str, password: str) -> User:
+    async def create_user(self, username: str, password: str, is_superuser: bool = False) -> User:
         hashed_password = Crypt.hash_password(password)
-        user = User(username=username, hashed_password=hashed_password)
+        user = User(username=username, hashed_password=hashed_password, is_superuser=is_superuser)
 
         try:
             self.session.add(user)
@@ -108,15 +108,19 @@ async def get_user_manager(session: AsyncSession = Depends(Database.get_async_se
     user_manager = UserManager(session)
 
     if not await user_manager.user_exists(username=DEFAULT_SUPERUSER_LOGIN):
-        await user_manager.create_user(username=DEFAULT_SUPERUSER_LOGIN, password=DEFAULT_SUPERUSER_PASSWORD)
+        await user_manager.create_user(
+            username=DEFAULT_SUPERUSER_LOGIN,
+            password=DEFAULT_SUPERUSER_PASSWORD,
+            is_superuser=True
+        )
     return user_manager
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=900)
+    return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=None)
 
 
-cookie_transport = CookieTransport(cookie_name='access_token', cookie_max_age=900)
+cookie_transport = CookieTransport(cookie_name='access_token', cookie_max_age=None)
 
 auth_backend = AuthenticationBackend(
     name='jwt',

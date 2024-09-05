@@ -7,7 +7,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import connections
-from loguru import logger
 from werkzeug.utils import secure_filename
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -30,8 +29,8 @@ connections.create_connection(hosts=[{'host': HOST, 'port': ES_PORT, 'scheme': '
 result_state = ResultsState()
 
 with open(TOKENS_JSON_PATH, 'r', encoding='utf-8') as tokens:
-    MODEL = papa.PAPA(es=es, token_function=mpi.tokenizer, token_file_content=tokens.read())
-    MODEL.create_index()
+    model = papa.PAPA(es=es, token_function=mpi.tokenizer, token_file_content=tokens.read())
+    model.create_index()
 
 
 @asynccontextmanager
@@ -54,10 +53,10 @@ async def render_template_page(template_name: str, request: Request, context: di
             context = {}
 
         context.update({'request': request, 'status': status.HTTP_200_OK})
+
         return templates.TemplateResponse(template_name, context)
-    except Exception as e:
-        logger.error(f'Error rendering template {template_name}: {e}')
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Internal Server Error')
+    except Exception:
+        return templates.TemplateResponse(template_name, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def set_access_token_cookie(response: RedirectResponse, access_token: str):
@@ -66,8 +65,8 @@ def set_access_token_cookie(response: RedirectResponse, access_token: str):
         value=access_token,
         httponly=True,
         secure=True,
-        max_age=3600,
-        samesite='lax'
+        samesite='lax',
+        max_age=None
     )
 
 
@@ -83,32 +82,6 @@ async def unauthorized_page(request: Request):
     return await render_template_page('unauth.html', request, None)
 
 
-@app.post('/login')
-async def login_user(
-        form_data: OAuth2PasswordRequestForm = Depends(),
-        user_manager: UserManager = Depends(get_user_manager)
-):
-    try:
-        user = await user_manager.authenticate(form_data)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='Invalid credentials'
-            )
-
-        access_token = await auth_backend.get_strategy().write_token(user)
-        response = RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
-        set_access_token_cookie(response, access_token)
-
-        return response
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Invalid credentials'
-        )
-
-
 @app.get('/login')
 async def login_page(request: Request):
     return await render_template_page('login.html', request, None)
@@ -119,41 +92,72 @@ async def register_page(request: Request):
     return await render_template_page('register.html', request, None)
 
 
+@app.post('/login')
+async def login_user(
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        user_manager: UserManager = Depends(get_user_manager)
+):
+    try:
+        user = await user_manager.authenticate(form_data)
+
+        if not user:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={'message': 'Логин или пароль неверны!'}
+            )
+
+        access_token = await auth_backend.get_strategy().write_token(user)
+        response = RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
+        set_access_token_cookie(response, access_token)
+        return response
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'message': str(e)}
+        )
+
+
 @app.post('/register')
 async def register_user(
-        request: Request,
         username: str = Form(...),
         password: str = Form(...),
         confirm_password: str = Form(...),
         user_manager: UserManager = Depends(get_user_manager)
 ):
-    context = {}
-
     if password != confirm_password:
-        context['error'] = 'Passwords do not match!'
-        return await render_template_page('register.html', request, context)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'message': 'Пароли не совпадают!'}
+        )
 
     user_exists = await user_manager.user_exists(username)
 
     if user_exists:
-        context['error'] = 'User already exists!'
-        return await render_template_page('register.html', request, context)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'message': 'Пользователь с таким "username" уже существует!'}
+        )
 
     await user_manager.create_user(username=username, password=password)
-    return RedirectResponse(url='/login', status_code=status.HTTP_303_SEE_OTHER)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={'message': 'Регистрация успешна!'}
+    )
 
 
 @app.get('/')
-async def home_page(request: Request,
-                    results: List[str] = Depends(result_state.get_results),
-                    user: UserRead = Depends(current_active_user)):
+async def home_page(
+        request: Request,
+        results: List[str] = Depends(result_state.get_results),
+        user: UserRead = Depends(current_active_user)
+):
     try:
         if not results:
             results = ['Пока пусто...']
 
-        subjects = MODEL.get_field_values('subject')
-        work_types = MODEL.get_field_values('work_type')
-        task_nums = MODEL.get_field_values('task_num')
+        subjects = model.get_field_values('subject')
+        work_types = model.get_field_values('work_type')
+        task_nums = model.get_field_values('task_num')
 
         context = {
             'subjects': subjects,
@@ -180,9 +184,11 @@ async def add_page(
 
 
 @app.post('/add')
-async def add_files(files: List[UploadFile] = File(...),
-                    user: UserRead = Depends(current_active_user)):
-    filenames_failed = list()
+async def add_files(
+        files: List[UploadFile] = File(...),
+        user: UserRead = Depends(current_active_user)
+):
+    filenames_failed = []
 
     try:
         if not files:
@@ -195,18 +201,17 @@ async def add_files(files: List[UploadFile] = File(...),
             if file.filename == '':
                 continue
 
-            filename = file.filename
+            full_filename = file.filename
             file_content = await file.read()
-            result = MODEL.add(filename, file_content.decode('utf-8'))
+            result = model.add(full_filename, file_content.decode('utf-8'))
 
             if not result:
-                filenames_failed.append(filename)
+                filenames_failed.append(full_filename)
 
         if filenames_failed:
-            filenames_failed_str = ', '.join(filenames_failed)
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={'message': f'Файлы \'{filenames_failed_str}\' не загружены! Неправильный формат файла!'}
+                content={'message': 'Файлы не загружены! Неправильный формат файла!'}
             )
 
         return JSONResponse(
@@ -221,11 +226,13 @@ async def add_files(files: List[UploadFile] = File(...),
 
 
 @app.post('/papa')
-async def papa(file: UploadFile = File(...),
-               subject: Optional[str] = Form(None),
-               work_type: Optional[str] = Form(None),
-               task_num: Optional[str] = Form(None),
-               user: UserRead = Depends(current_active_user)):
+async def papa(
+        file: UploadFile = File(...),
+        subject: Optional[str] = Form(None),
+        work_type: Optional[str] = Form(None),
+        task_num: Optional[str] = Form(None),
+        user: UserRead = Depends(current_active_user)
+):
     try:
         if not file:
             return JSONResponse(
@@ -248,20 +255,19 @@ async def papa(file: UploadFile = File(...),
         if task_num:
             src_filename += f'_{task_num}'
 
-        results = MODEL.papa(file_content.decode('utf-8'), filename, src_filename)
+        results = model.papa(file_content.decode('utf-8'), filename, src_filename)
 
         if isinstance(results, dict):
             results = [
-                f'Файл \"{file.filename}\" похож на \"{results["dst_name"][0]}\'',
+                f'Файл \"{file.filename}\" похож на \"{results["dst_name"][0]}\"',
                 f'{results["diff"][0]}'
             ]
 
         result_state.set_results(results or ['Пока пусто...'])
 
         return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
-
     except Exception as e:
-        result_state.set_results([f'Error: {e}'])
+        result_state.set_results([f'Ошибка: {str(e)}'])
         return RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
 
 
