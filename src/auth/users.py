@@ -6,6 +6,7 @@ from fastapi_users.authentication import AuthenticationBackend, JWTStrategy, Coo
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.operators import eq
+from starlette.responses import RedirectResponse, Response
 
 from auth.models import User
 from auth.database import Database
@@ -118,6 +119,28 @@ async def get_user_manager(session: AsyncSession = Depends(Database.get_async_se
 
 def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=SECRET_KEY, lifetime_seconds=None)
+
+
+def set_access_token_cookie(response: RedirectResponse, access_token: str):
+    response.set_cookie(
+        key='access_token',
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite='lax',
+        max_age=None
+    )
+
+
+def clear_access_token_cookie(response: Response):
+    response.set_cookie(
+        key='access_token',
+        value='',
+        httponly=True,
+        secure=True,
+        samesite='lax',
+        max_age=0
+    )
 
 
 cookie_transport = CookieTransport(cookie_name='access_token', cookie_max_age=None)

@@ -14,7 +14,7 @@ from typing import List, Optional
 from auth.database import Database
 from auth.models import User
 from auth.schemas import UserRead
-from auth.users import auth_backend, get_user_manager, UserManager
+from auth.users import auth_backend, get_user_manager, UserManager, clear_access_token_cookie, set_access_token_cookie
 from result import ResultsState
 from app import papa, mpi
 from fastapi_users import FastAPIUsers
@@ -59,17 +59,6 @@ async def render_template_page(template_name: str, request: Request, context: di
         return templates.TemplateResponse(template_name, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def set_access_token_cookie(response: RedirectResponse, access_token: str):
-    response.set_cookie(
-        key='access_token',
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite='lax',
-        max_age=None
-    )
-
-
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == status.HTTP_401_UNAUTHORIZED:
@@ -90,6 +79,13 @@ async def login_page(request: Request):
 @app.get('/register')
 async def register_page(request: Request):
     return await render_template_page('register.html', request, None)
+
+
+@app.post('/logout')
+async def logout_user(request: Request):
+    response = RedirectResponse(url='/login', status_code=status.HTTP_303_SEE_OTHER)
+    clear_access_token_cookie(response)
+    return response
 
 
 @app.post('/login')
@@ -135,7 +131,7 @@ async def register_user(
     if user_exists:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={'message': 'Пользователь с таким "username" уже существует!'}
+            content={'message': f'Пользователь с таким username \"{username}\" уже существует!'}
         )
 
     await user_manager.create_user(username=username, password=password)
